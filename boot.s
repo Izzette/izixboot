@@ -7,8 +7,9 @@
 // Disable those pesky interupts
 	cli
 
-// Initialize the stack, hopefully this will be enough, but not too much
-	mov	(stackhi),	%sp
+// Initialize the stack based on the start address of this mbr code
+	mov	%si,		%sp
+	sub	$2,		%si
 	mov	%sp,		%bp
 
 // Jump to the main boot code
@@ -105,7 +106,7 @@ ask:
 	add	$2,		%sp
 
 eask:
-	mov	numbs(,%ecx,4),	%cx
+	mov	numbs(,%ecx,2),	%cx
 	push	%cx
 	call	puts
 	add	$2,		%sp
@@ -154,15 +155,12 @@ eprompt:
 newline:
 	.asciz "\r\n"
 
-stackhi:
-	.long	0x1000
-
-	.align	4
+	.align	2
 numbs:
-	.long	.nums_0
-	.long	.nums_1
-	.long	.nums_2
-	.long	.nums_3
+	.word	.nums_0
+	.word	.nums_1
+	.word	.nums_2
+	.word	.nums_3
 .nums_0:
 	.string	"0"
 .nums_1:
