@@ -120,12 +120,18 @@ ask:
 	call	puts
 	add	$2,		%sp
 
+// Finish displaying the boot selection prompt.
 eask:
+
+// Print the last valid drive index to the console.
+// Convert the drive index to a string.
 	mov	numbs(,%edx,2),	%cx
+// Print the drive index string.
 	push	%cx
 	call	puts
 	add	$2,		%sp
 
+// Print the end of the prompt "]: ".
 	push	$eprompt
 	call	puts
 	add	$2,		%sp
