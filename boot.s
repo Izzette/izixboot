@@ -86,9 +86,13 @@ ckdisk:
 	cmp	$0,		%ah
 	jne	numdisks
 
-// Else check for the next drive.
+// Increment the drive index.
 	inc	%dl
-	jmp	reset
+
+// Check if we've surpased the maximum supprted drive index.
+	cmp	(maxdrives),	%dl
+// If we haven't check for the next drive.
+	jl	reset
 
 // Get the number of disks from the first bad disk index in %dl.
 numdisks:
@@ -190,6 +194,10 @@ eprompt:
 // A CRLF newline
 newline:
 	.asciz "\r\n"
+
+// The exclusive maximum drive index supported.
+maxdrives:
+	.word	0x84
 
 // And array of digit strings up to 4.
 	.align	2
