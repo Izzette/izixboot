@@ -1,54 +1,56 @@
 // boot.s
-// MBR boot sector
+// A simple MBR bootloader supporting up to 4 drives.
 
-// We are operating in 16-bit real mode
+// We are operating in 16-bit real mode.
 .code16
 
-// Disable those pesky interupts
+// Disable those pesky interupts.
 	cli
 
-// Initialize the stack based on the start address of this mbr code
+// Initialize the stack based on the start address of this mbr code.
 	mov	%si,		%sp
 	sub	$2,		%si
 	mov	%sp,		%bp
 
-// Jump to the main boot code
+// Jump to the main boot code, where ever it is.
 	ljmp	$0,		$boot
 
-// Print a string using the BIOS
+// Print a string using the BIOS intrupt calls.
 // void puts (char *) {
 puts:
 	push	%bp
 	mov	%sp,		%bp
 
-// We're going to need this registers
+// TODO: do we really need to save this register?
 	push	%si
 
-// Move the string to the source index
-	mov	4(%bp),	%si
+// Move the string to the source index.
+	mov	4(%bp),		%si
 
-// We are going to use the display character BIOS interupt call
+// We are going to use the display character BIOS interupt call.
 	mov	$0x0e,		%ah
 
+// Print a character to the console.
 .Lputs_putc:
-// Load the next byte into %al from the source index, then increment %si
+
+// Load the next byte into %al from the source index, then increment %si.
 	lodsb
 
-// Check to see if we have reached the NULL terminating byte
+// Check to see if we have reached the NULL terminating byte yet.
 	or	%al,		%al
-// Finish up and return
+// If so, finish up and return.
 	jz	.Lputs_fin
 
-// Make the display character BIOS interupt call
+// Display the character is %al.
 	int	$0x10
 
-// Do it all again
+// Print the next character.
 	jmp	.Lputs_putc
 
-// Finish up the function
+// Finish up the puts function.
 .Lputs_fin:
 
-// Restore these registers
+// Restore the source index.
 	pop	%si
 
 	mov	%bp,		%sp
@@ -56,57 +58,70 @@ puts:
 	ret
 // }
 
-// Do the thing
+// Do the thing, Julie.
 boot:
 
-// Count the number of drives
+// Count the number of useble drives.
 count:
 
-	// Start with the first drive
+// Initialize the disk index to the first disk (this disk).
 	mov	$0x80,		%dl
 
-// Reset disk, use %dl as disk number
+// Reset disk, use %dl as disk index.
 reset:
-// Set the BIOS disk operation to reset
+
+// Use the BIOS to reset the disk.
 	mov	$0x00,		%ah
-// Reset the disk
 	int	$0x13
 
-// Check for the disk
+// Check if the current disk index in %dl is useable.
 ckdisk:
-// Set the BIOS disk operation to status
+
+// Get the status from the last reset operation from the BIOS.
 	mov	$0x01,		%ah
-// Get the status
 	int	$0x13
-// If fail, we've found the number of drives
+
+// If the last reset ended in anything other than success,
+// we've found the first drive index that is not useable.
 	cmp	$0,		%ah
-	jne	decdisk
-// Else check the next drive
+	jne	numdisks
+
+// Else check for the next drive.
 	inc	%dl
 	jmp	reset
 
-decdisk:
+// Get the number of disks from the first bad disk index in %dl.
+numdisks:
+
+// Decrement the disk number so it represents the last good disk.
 	dec	%dl
 
-// Say the thing
+// Compute the number of disks, and put it in %edx
+// (it has to be a valid base address).
+	andl	$0xff,		%edx
+	subl	$0x80,		%edx
+
+// Ask the user to select a disk to boot from.
 ask:
+
+// Display "Boot from [".
 	push	$prompt
 	call	puts
 	add	$2,		%sp
 
-	mov	%dx,		%cx
-	andl	$0xff,		%ecx
-	subl	$0x80,		%ecx
-
-	cmp	$0,		%ecx
+// If there is only one good disk to choose from,
+// don't show the use a range of disks to select,
+// just jump to the end of the prompt.
+	cmp	$0,		%edx
 	je	eask
 
+// Show the start of the range "0-"
 	push	$srange
 	call	puts
 	add	$2,		%sp
 
 eask:
-	mov	numbs(,%ecx,2),	%cx
+	mov	numbs(,%edx,2),	%cx
 	push	%cx
 	call	puts
 	add	$2,		%sp
@@ -115,46 +130,62 @@ eask:
 	call	puts
 	add	$2,		%sp
 
-// Wait for any keyboard input, then got back to say
-wait:
+// Get the drive selection from the user.
+getsel:
 
-// We are going to use the read keyboard scancode BIOS interupt function
+// We are going to use the read keyboard scancode BIOS interupt function.
 	mov	$0x00,		%ah
 
-// Renable interupts
+// Renable interupts, so we can listen to the keyboard input.
 	sti
 
-// Use the scancode BIOS interupt function
+// Use the scancode BIOS interupt function.
 	int	$0x16
 
-// Wait for keyboard input
+// Wait for the users keyboard input.
 	hlt
 
-// Disable interupts again
+// Disable interupts again.
 	cli
 
+// Print the character in %al, the one just entered by the user.
+// Put a null byte into %ah,
+// this will terminate the string begining with %al.
 	mov	$0x00,		%ah
+// Push the string onto the stack.
 	push	%ax
+// Call puts, the stack pointer points at the
+// string obtained from the keyboard scancode input.
 	push	%sp
 	call	puts
+// Reclain both the pointer to the string and the string itself.
 	add	$4,		%sp
 
+// Print a CRLF newline sequence.
 	push	$newline
 	call	puts
 	add	$2,		%sp
 
-// Say the thing again
+// TODO: map the input to a drive index, and confirm it is in the valid range.
 	jmp	ask
 
+// The begaining of the boot selection prompt string.
 prompt:
 	.asciz "Boot from ["
+
+// The begining of the range of bootable drives.
 srange:
 	.asciz "0-"
+
+// The end of the boot selection prompt string.
 eprompt:
 	.asciz "]: "
+
+// A CRLF newline
 newline:
 	.asciz "\r\n"
 
+// And array of digit strings up to 4.
 	.align	2
 numbs:
 	.word	.nums_0
