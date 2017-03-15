@@ -240,27 +240,26 @@ getsel:
 	call	puts
 	add	$2,		%sp
 
-// char *cur = numbs;
-	movl	$numbs,		%ebx
+// size_t i = numbs;
+	movl	$0,		%ebx
 
 // Get the index from the input.
 cksel:
 
-// if (NULL == cur)
-	cmp	$0,		(%ebx)
+// if (NULL == numbs[i])
+	cmp	$0,		numbs(,%ebx,2)
 	je	inval
 
 // Comapre cur and the keyboard input, the keyboard input is already on the stack.
 	push	%cx
 	push	%sp
-	push	(%ebx)
+	push	numbs(,%ebx,2)
 	call	cmpstr
 	add	$4,		%sp
 	pop	%cx
-	andl	$0xffff,	%ebx
 
 // cur++;
-	add	$2,		%bx
+	inc	%bx
 
 // If they are not equal try the next one.
 	or	%ax,		%ax
