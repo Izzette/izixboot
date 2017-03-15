@@ -78,17 +78,28 @@ ckdisk:
 // Get the status
 	int	$0x13
 // If fail, we've found the number of drives
-	or	%ah,		%ah
-	jz	ask
+	cmp	$0,		%ah
+	jne	decdisk
 // Else check the next drive
 	inc	%dl
 	jmp	reset
+
+decdisk:
+	dec	%dl
 
 // Say the thing
 ask:
 	push	$prompt
 	call	puts
-	add	$0x4,		%sp
+	add	$2,		%sp
+
+	mov	%dx,		%cx
+	andl	$0xff,		%ecx
+	subl	$0x80,		%ecx
+	mov	numbs(,%ecx,4),	%cx
+	push	%cx
+	call	puts
+	add	$2,		%sp
 
 // Wait for any keyboard input, then got back to say
 wait:
@@ -113,7 +124,23 @@ wait:
 
 prompt:
 	.asciz "Boot from ["
+
 stackhi:
 	.long	0x1000
+
+	.align	4
+numbs:
+	.long	.nums_0
+	.long	.nums_1
+	.long	.nums_2
+	.long	.nums_3
+.nums_0:
+	.string	"0"
+.nums_1:
+	.string	"1"
+.nums_2:
+	.string	"2"
+.nums_3:
+	.string	"3"
 
 // vim: set ts=8 sw=8 noet syn=asm:
