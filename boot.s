@@ -132,8 +132,11 @@ wait:
 // Disable interupts again
 	cli
 
-	mov	$0x0e,		%ah
-	int	$0x10
+	mov	$0x00,		%ah
+	push	%ax
+	push	%sp
+	call	puts
+	add	$4,		%sp
 
 	push	$newline
 	call	puts
