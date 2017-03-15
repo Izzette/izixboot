@@ -247,13 +247,14 @@ getsel:
 cksel:
 
 // if (NULL == numbs[i])
-	cmp	$0,		numbs(,%ebx,2)
+	mov	numbs(,%ebx,2),	%ax
+	cmp	$0,		%ax
 	je	inval
 
 // Comapre cur and the keyboard input, the keyboard input is already on the stack.
 	push	%cx
 	push	%sp
-	push	numbs(,%ebx,2)
+	push	%ax
 	call	cmpstr
 	add	$4,		%sp
 	pop	%cx
