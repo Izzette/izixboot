@@ -166,7 +166,7 @@ numdisks:
 // Compute the number of disks, and put it in %edx
 // (it has to be a valid base address).
 	andl	$0xff,		%edx
-	subl	$0x80,		%edx
+	sub	$0x80,		%dx
 
 // Ask the user to select a disk to boot from.
 ask:
@@ -259,21 +259,28 @@ cksel:
 	add	$4,		%sp
 	pop	%cx
 
-// cur++;
-	inc	%bx
 
 // If they are not equal try the next one.
 	or	%ax,		%ax
-	jnz	cksel
+	jz	inindex
+// cur++;
+	inc	%bx
+	jmp	cksel
+
+inindex:
 // TODO: do something.
+	cmp	%bl,		%dl
+	jl	inval
+	push	$validmsg
+	call	puts
+	add	$2,		%sp
+	push	$newline
+	call	puts
 	add	$2,		%sp
 	jmp	ask
 
 // Got invalid input from the user.
 inval:
-
-// Deallocate the input string
-	add	$2,		%sp
 
 // Print "Invalid input.".
 	push	$invalmsg
@@ -301,6 +308,9 @@ eprompt:
 
 invalmsg:
 	.asciz "Invalid input."
+
+validmsg:
+	.asciz "Valid input :)"
 
 // A CRLF newline
 newline:
