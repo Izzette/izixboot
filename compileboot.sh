@@ -1,1 +1,1 @@
-gcc -m16 -nostdlib -Wl,--oformat,binary,-T,linker.ld boot.s -o boot
+gcc -m16 -Wl,--oformat,binary -Wl,-T,linker.ld -nostdlib boot.s -o boot

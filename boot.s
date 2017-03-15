@@ -96,8 +96,21 @@ ask:
 	mov	%dx,		%cx
 	andl	$0xff,		%ecx
 	subl	$0x80,		%ecx
+
+	cmp	$0,		%ecx
+	je	eask
+
+	push	$srange
+	call	puts
+	add	$2,		%sp
+
+eask:
 	mov	numbs(,%ecx,4),	%cx
 	push	%cx
+	call	puts
+	add	$2,		%sp
+
+	push	$eprompt
 	call	puts
 	add	$2,		%sp
 
@@ -111,7 +124,7 @@ wait:
 	sti
 
 // Use the scancode BIOS interupt function
-	int $0x16
+	int	$0x16
 
 // Wait for keyboard input
 	hlt
@@ -119,11 +132,24 @@ wait:
 // Disable interupts again
 	cli
 
+	mov	$0x0e,		%ah
+	int	$0x10
+
+	push	$newline
+	call	puts
+	add	$2,		%sp
+
 // Say the thing again
 	jmp	ask
 
 prompt:
 	.asciz "Boot from ["
+srange:
+	.asciz "0-"
+eprompt:
+	.asciz "]: "
+newline:
+	.asciz "\r\n"
 
 stackhi:
 	.long	0x1000
