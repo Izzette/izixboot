@@ -8,7 +8,7 @@
 	cli
 
 // Initialize the stack based on the start address of this mbr code.
-	mov	%si,		%sp
+	mov	0x7bff,		%sp
 	sub	$2,		%si
 	mov	%sp,		%bp
 
@@ -16,7 +16,7 @@
 	ljmp	$0,		$boot
 
 // Print a string using the BIOS intrupt calls.
-// void puts (char *) {
+// void puts (const char *) {
 puts:
 	push	%bp
 	mov	%sp,		%bp
@@ -52,6 +52,69 @@ puts:
 
 // Restore the source index.
 	pop	%si
+
+	mov	%bp,		%sp
+	pop	%bp
+	ret
+// }
+
+// Compare string.
+// short puts (const char *s1, const char *s2) {
+cmpstr:
+	push	%bp
+	mov	%sp,		%bp
+
+	pushl	%ebx
+	pushl	%ecx
+	pushl	%edx
+
+// Move the first string to the source index.
+	mov	4(%bp),		%ax
+	andl	$0xffff,	%eax
+// Move the second string to %eax.
+	mov	6(%bp),		%bx
+	andl	$0xffff,	%ebx
+
+.Lcmpstr_cmpc:
+	mov	(%eax),		%cl
+	inc	%ax
+	mov	(%ebx),		%dl
+	inc	%bx
+
+// if (%al < %ah) return -1;
+	cmp	%cl,		%dl
+	jl	.Lcmpstr_lt
+// else if (%al > %ah) return 1;
+	cmp	%cl,		%dl
+	jg	.Lcmpstr_gt
+
+// Check to see if we have reached the end of *both* strings.
+	or	%cl,		%cl
+// If so, the strings are equal, so finish up and return.
+	jz	.Lcmpstr_eq
+
+// Move onto the next character.
+	jmp	.Lcmpstr_cmpc
+
+// return -1;
+.Lcmpstr_lt:
+	mov	$-1,		%ax
+	jmp	.Lcmpstr_fin
+
+// return 1;
+.Lcmpstr_gt:
+	mov	$1,		%ax
+	jmp	.Lcmpstr_fin
+
+// return 0;
+.Lcmpstr_eq:
+	mov	$0,		%ax
+
+.Lcmpstr_fin:
+// Restore registers.
+	popl	%edx
+	popl	%ecx
+	popl	%ebx
 
 	mov	%bp,		%sp
 	pop	%bp
@@ -168,15 +231,60 @@ getsel:
 // string obtained from the keyboard scancode input.
 	push	%sp
 	call	puts
-// Reclain both the pointer to the string and the string itself.
-	add	$4,		%sp
+	add	$2,		%sp
+// Pop the input string into %cx instead of ax
+	pop	%cx
 
 // Print a CRLF newline sequence.
 	push	$newline
 	call	puts
 	add	$2,		%sp
 
-// TODO: map the input to a drive index, and confirm it is in the valid range.
+// char *cur = numbs;
+	movl	$numbs,		%ebx
+
+// Get the index from the input.
+cksel:
+
+// if (NULL == cur)
+	cmp	$0,		(%ebx)
+	je	inval
+
+// Comapre cur and the keyboard input, the keyboard input is already on the stack.
+	push	%cx
+	push	%sp
+	push	(%ebx)
+	call	cmpstr
+	add	$4,		%sp
+	pop	%cx
+	andl	$0xffff,	%ebx
+
+// cur++;
+	add	$2,		%bx
+
+// If they are not equal try the next one.
+	or	%ax,		%ax
+	jnz	cksel
+// TODO: do something.
+	add	$2,		%sp
+	jmp	ask
+
+// Got invalid input from the user.
+inval:
+
+// Deallocate the input string
+	add	$2,		%sp
+
+// Print "Invalid input.".
+	push	$invalmsg
+	call	puts
+	add	$2,		%sp
+// Print CRLF.
+	push	$newline
+	call	puts
+	add	$2,		%sp
+
+// Try again
 	jmp	ask
 
 // The begaining of the boot selection prompt string.
@@ -191,6 +299,9 @@ srange:
 eprompt:
 	.asciz "]: "
 
+invalmsg:
+	.asciz "Invalid input."
+
 // A CRLF newline
 newline:
 	.asciz "\r\n"
@@ -199,13 +310,14 @@ newline:
 maxdrives:
 	.word	0x84
 
-// And array of digit strings up to 4.
+// A NULL-terminated array of digit strings up to 4.
 	.align	2
 numbs:
 	.word	.nums_0
 	.word	.nums_1
 	.word	.nums_2
 	.word	.nums_3
+	.word	0
 .nums_0:
 	.string	"0"
 .nums_1:
