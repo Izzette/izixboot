@@ -236,14 +236,17 @@ getsel:
 // Get the index from the input.
 cksel:
 
-// if (NULL == numbs[i])
+// if (NULL == numbs[i]) goto inval;
 	mov	numbs(,%ebx,2),	%ax
 	cmp	$0,		%ax
 	je	inval
 
-// Comapre cur and the keyboard input, the keyboard input is already on the stack.
+// Comapre cur and the keyboard input.
+// Push the keyboard input onto the stack.
 	push	%cx
+// Push the address of the keyboard input to the stack.
 	push	%sp
+// Push the address of our current numbs comparision to the stack.
 	push	%ax
 	call	cmpstr
 	add	$4,		%sp
@@ -267,8 +270,9 @@ inindex:
 	call	puts
 	add	$2,		%sp
 
-// TODO: load kernel.
-	hlt
+// Get BIOS index from %dl
+	add	$80,		%dl
+	jmp	loadbl
 
 // Got invalid input from the user.
 inval:
@@ -280,6 +284,11 @@ inval:
 
 // Try again
 	jmp	ask
+
+// Load the bootloader, use BIOS disk index in %dl.
+loadbl:
+// TODO: do something.
+	hlt
 
 // The begaining of the boot selection prompt string.
 prompt:
@@ -293,9 +302,11 @@ srange:
 eprompt:
 	.asciz "]: "
 
+// Invalid input error message.
 invalmsg:
 	.asciz "\r\nInvalid input.\r\n"
 
+// Valid input booting message.
 validmsg:
 	.asciz "\r\nBooting ...\r\n"
 
