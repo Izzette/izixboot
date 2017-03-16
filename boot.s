@@ -230,11 +230,6 @@ getsel:
 // Pop the input string into %cx instead of ax
 	pop	%cx
 
-// Print a CRLF newline sequence.
-	push	$newline
-	call	puts
-	add	$2,		%sp
-
 // size_t i = numbs;
 	mov	$0,		%bx
 
@@ -263,26 +258,23 @@ cksel:
 	jmp	cksel
 
 inindex:
-// TODO: do something.
+// Check if index is in range.
 	cmp	%bl,		%dl
 	jl	inval
+
+// Boot!
 	push	$validmsg
 	call	puts
 	add	$2,		%sp
-	push	$newline
-	call	puts
-	add	$2,		%sp
-	jmp	ask
+
+// TODO: load kernel.
+	hlt
 
 // Got invalid input from the user.
 inval:
 
 // Print "Invalid input.".
 	push	$invalmsg
-	call	puts
-	add	$2,		%sp
-// Print CRLF.
-	push	$newline
 	call	puts
 	add	$2,		%sp
 
@@ -302,14 +294,10 @@ eprompt:
 	.asciz "]: "
 
 invalmsg:
-	.asciz "Invalid input."
+	.asciz "\r\nInvalid input.\r\n"
 
 validmsg:
-	.asciz "Valid input :)"
-
-// A CRLF newline
-newline:
-	.asciz "\r\n"
+	.asciz "\r\nBooting ...\r\n"
 
 // The exclusive maximum drive index supported.
 maxdrives:
