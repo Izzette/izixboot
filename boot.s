@@ -271,7 +271,7 @@ inindex:
 	add	$2,		%sp
 
 // Get BIOS index from %dl
-	add	$80,		%dl
+	add	$0x80,		%dl
 	jmp	loadbl
 
 // Got invalid input from the user.
@@ -287,32 +287,88 @@ inval:
 
 // Load the bootloader, use BIOS disk index in %dl.
 loadbl:
+
+// Check for LBA extensions
+	mov	$lbapack,	%si
+	mov	$0x42,		%ah
+// %dl is already correct.
+//	xchg	%dl,		%dl
+	int	$0x13
+
+// Exec the bootloader if everything goes well.
+	jc	readerr
+	or	%ah,		%ah
+	jz	execbl
+
+// Display error if something goest wrong.
+readerr:
+	push	$failmsg
+	call	puts
+// There is no need to clear the stack, we've given up.
+//	add	$2,		%sp
+// Require reboot.
+	hlt
+
+// Execute the bootloader.
+execbl:
 // TODO: do something.
 	hlt
 
 // The begaining of the boot selection prompt string.
 prompt:
-	.asciz "Boot from ["
+	.asciz	"Boot from ["
 
 // The begining of the range of bootable drives.
 srange:
-	.asciz "0-"
+	.asciz	"0-"
 
 // The end of the boot selection prompt string.
 eprompt:
-	.asciz "]: "
+	.asciz	"]: "
 
 // Invalid input error message.
 invalmsg:
-	.asciz "\r\nInvalid input.\r\n"
+	.asciz	"\r\nInvalid input.\r\n"
 
 // Valid input booting message.
 validmsg:
-	.asciz "\r\nBooting ...\r\n"
+	.asciz	"\r\nBooting ...\r\n"
+
+// Disk failure message.
+failmsg:
+	.asciz	"Disk failure!"
 
 // The exclusive maximum drive index supported.
 maxdrives:
 	.word	0x84
+
+// LBA load data.
+	.align	2
+lbapack:
+// Size of packet.
+	.byte	0x10
+// Reserved.
+	.byte	0x00
+// Number of sectors to read, some bios only support 127,
+// fortunetly we only need 127.
+blkcount:
+//	.word	0x007f
+	.word	0x007f
+// Bootloader start (16-bit segment:16-bit offset).
+loaderstart:
+// Transfer buffer offset.
+	.word	0x0000
+// Transfer buffer segement.
+//	.word	0x6fff
+	.word	0x07e0
+// Start LBA (1 indexed!).  This is the start that the bootloader partion must be at.
+// This is also the first valid LBA for a GPT paritions.
+blkstart:
+// Lower 32-bits
+//	.long	0x00000023
+	.long	0x00000000
+// Upper 32-bits (really 16-bits with 48-bit LBAs?)
+	.long	0x00000000
 
 // A NULL-terminated array of digit strings up to 4.
 	.align	2
