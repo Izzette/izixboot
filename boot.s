@@ -7,9 +7,8 @@
 // Disable those pesky interupts.
 	cli
 
-// Initialize the stack based on the start address of this mbr code.
-	mov	0x7bff,		%sp
-	sub	$2,		%si
+// Initialize the stack.
+	mov	$0x7bfe,	%sp
 	mov	%sp,		%bp
 
 // Jump to the main boot code, where ever it is.
@@ -263,7 +262,7 @@ cksel:
 // If they are not equal try the next one.
 	or	%ax,		%ax
 	jz	inindex
-// cur++;
+// i++;
 	inc	%bx
 	jmp	cksel
 
