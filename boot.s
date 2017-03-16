@@ -63,16 +63,14 @@ cmpstr:
 	push	%bp
 	mov	%sp,		%bp
 
-	pushl	%ebx
-	pushl	%ecx
-	pushl	%edx
+	push	%bx
+	push	%cx
+	push	%dx
 
 // Move the first string to the source index.
 	mov	4(%bp),		%ax
-	andl	$0xffff,	%eax
-// Move the second string to %eax.
+// Move the second string to %ax.
 	mov	6(%bp),		%bx
-	andl	$0xffff,	%ebx
 
 .Lcmpstr_cmpc:
 	mov	(%eax),		%cl
@@ -111,9 +109,9 @@ cmpstr:
 
 .Lcmpstr_fin:
 // Restore registers.
-	popl	%edx
-	popl	%ecx
-	popl	%ebx
+	pop	%dx
+	pop	%cx
+	pop	%bx
 
 	mov	%bp,		%sp
 	pop	%bp
@@ -162,9 +160,7 @@ numdisks:
 // Decrement the disk number so it represents the last good disk.
 	dec	%dl
 
-// Compute the number of disks, and put it in %edx
-// (it has to be a valid base address).
-	andl	$0xff,		%edx
+// Compute the number of disks, and put it in %dx.
 	sub	$0x80,		%dx
 
 // Ask the user to select a disk to boot from.
@@ -178,7 +174,7 @@ ask:
 // If there is only one good disk to choose from,
 // don't show the use a range of disks to select,
 // just jump to the end of the prompt.
-	cmp	$0,		%edx
+	cmp	$0,		%dx
 	je	eask
 
 // Show the start of the range "0-"
@@ -240,7 +236,7 @@ getsel:
 	add	$2,		%sp
 
 // size_t i = numbs;
-	movl	$0,		%ebx
+	mov	$0,		%bx
 
 // Get the index from the input.
 cksel:
