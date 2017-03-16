@@ -352,21 +352,18 @@ lbapack:
 // Number of sectors to read, some bios only support 127,
 // fortunetly we only need 127.
 blkcount:
-//	.word	0x007f
 	.word	0x007f
 // Bootloader start (16-bit segment:16-bit offset).
 loaderstart:
 // Transfer buffer offset.
 	.word	0x0000
 // Transfer buffer segement.
-//	.word	0x6fff
 	.word	0x07e0
 // Start LBA (1 indexed!).  This is the start that the bootloader partion must be at.
 // This is also the first valid LBA for a GPT paritions.
 blkstart:
 // Lower 32-bits
-//	.long	0x00000023
-	.long	0x00000000
+	.long	0x00000022
 // Upper 32-bits (really 16-bits with 48-bit LBAs?)
 	.long	0x00000000
 
