@@ -16,7 +16,6 @@ SECTIONS
         Who cares? Other segments only exist to appease C compilers.
          */
         *(.stage1)
-        *(.data)
 
         /*
         Magic bytes. 0x1FE == 510.

@@ -58,10 +58,7 @@
 
 // Add the dosstart address to the offset.
 // %bx now contains the start address of that partition.
-	add	$dosstart,	%bx
-
-// Move the result to %ax
-	mov	%bx,		%ax
+	add	$dosstart,	%ax
 
 // Restore %bx.
 	pop	%dx
@@ -75,7 +72,7 @@
 /* *********** STAGE 1 *********** */
 /* ******************************* */
 
-.section	.stage1
+.section .stage1
 
 _start:
 // Disable those pesky interupts.
@@ -274,8 +271,6 @@ noboot:
 /* ************ DATA ************ */
 /* ****************************** */
 
-.section	.data
-
 // NOTE: The data segment goes into the MBR along with .stage1.
 
 // Valid input booting message.
@@ -336,7 +331,7 @@ blkstartlow:
 /* *********** STAGE 2 *********** */
 /* ******************************* */
 
-.section	.stage2
+.section .stage2
 
 // NOTE: The stage2 segment goes after MBR containing .stage1 and .data.
 
@@ -360,7 +355,7 @@ is_bootable:
 //	add	$dosboot,	%ax
 
 // Move the bootable flag to %al.
-	mov	(%ebx),		%bl
+	mov	(%eax),		%bl
 
 // Is it bootable.
 	cmp	$dosbootflag,	%bl
