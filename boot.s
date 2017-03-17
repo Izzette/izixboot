@@ -1,21 +1,204 @@
 // boot.s
 // A simple MBR bootloader supporting up to 4 drives.
 
+/* ******************************* */
+/* *********** MACROS ************ */
+/* ******************************* */
+
+// "bool.h"
+.set	true,		1
+.set	false,		0
+
+// errno flags.
+.set	ENOERR,		0x00
+.set	EINVALDOS,	0x01 << 0
+.set	ENOBOOTABLE,	0x01 << 1
+.set	EZEROPARTLEN,	0x01 << 2
+.set	EREADERR,	0x01 << 3
+
+// Start address of the MBR in memory.
+.set	mbrstart,	0x7c00
+// Start address of the stage two bootloader in memory.
+.set	s2start,	0x200 + mbrstart
+// Start address of the DOS partition table in memory.
+.set	dosstart,	0x01be + mbrstart
+
+// Maximum DOS partitions, exclusive.
+.set	dosmaxpart,	4
+// The length of each DOS partition entry.
+.set	doslen,		0x10
+// Bootable flags for DOS partition
+.set	dosnobootflag,	0x00
+.set 	dosbootflag,	0x80
+// DOS partition bootable byte offset.
+.set	dosboot,	0x00
+// DOS partition LBA start offset.  NOT ALIGNED.
+.set	doslbast,	0x08
+// DOS partition LBA total length.  NOT ALIGNED.
+.set	doslbalen,	0xc0
+
+// Safe LBA max to read with bios
+.set	lbasafemax,	0x7f
+
+// Get DOS partition address.
+// Addess will be left in %ax.
+.macro getpart part_index
+// Store %bx.
+	push	%bx
+	push	%dx
+
+// Put part_index in %bx
+	mov	\part_index,	%ax
+
+// Compute the offset from dosstart.
+	mov	$doslen,	%bx
+// High order bits will be stored in %dx,
+// They should however be safe to ignore.
+	mul	%bx
+
+// Add the dosstart address to the offset.
+// %bx now contains the start address of that partition.
+	add	$dosstart,	%bx
+
+// Move the result to %ax
+	mov	%bx,		%ax
+
+// Restore %bx.
+	pop	%dx
+	pop	%bx
+.endm
+
 // We are operating in 16-bit real mode.
 .code16
 
+/* ******************************* */
+/* *********** STAGE 1 *********** */
+/* ******************************* */
+
+.section	.stage1
+
+_start:
 // Disable those pesky interupts.
 	cli
 
 // Initialize the stack.
-	mov	$0x7bfe,	%sp
+	mov	$mbrstart,	%sp
 	mov	%sp,		%bp
 
-// Jump to the main boot code, where ever it is.
-	ljmp	$0,		$boot
+// Drive index should be in %dl already.
+//	xchg	%dl,		%dl
+
+// Initialize errno
+	movw	$ENOERR,	errno
+
+// Load the second stage bootloader.
+	push	%dx
+	call	load_stage2
+	add	$2,		%sp
+
+// If something goes wrong splash read error.
+	cmp	$ENOERR,	errno
+	jne	readerr
+
+// call to the main boot code with the drive index.
+	push	%dx
+	call	boot
+// This function should never return.
+//	add	$2,		%sp
+
+// Reset the drive.
+// void reset_drive(const uint16_t drive_index) {
+reset_drive:
+	push	%bp
+	mov	%sp,		%bp
+
+// Store registers.
+	push	%dx
+
+// Drive index to reset.
+	mov	0x4(%bp),	%dx
+
+// int 13h ah=0h, reset disk
+	mov	$0,		%ah
+	int	$0x13
+
+// Restore registers.
+	pop	%dx
+
+	mov	%bp,		%sp
+	pop	%bp
+	ret
+// }
+
+// Load the stage2 bootloader from CHS (0,0,2)
+// Sets the $EREADERR flag if something goes wrong.
+// void load_stage2 (const uint16_t drive_index) {
+load_stage2:
+	push	%bp
+	mov	%sp,		%bp
+
+// Store registers.
+// TODO: do we really need to save %es?
+	push	%es
+	push	%bx
+	push	%cx
+	push	%dx
+
+// Drive index.
+	mov	0x4(%bp),	%dx
+
+// Reset the drive
+	push	%dx
+	call	reset_drive
+	add	$2,		%sp
+
+// Read into memory.
+	mov	$2,		%ah
+// Drive to read.  %dl should already be correct.
+//	xchg	%dl,		%dl
+// Cylinder number.
+	mov	$0,		%ch
+// Head number.
+	mov	$0,		%dh
+// Sector number (1 indexed!)
+	mov	$2,		%cl
+// Number of sectors to read.
+	mov	$1,		%al
+// Segement to read to.
+// First segment.
+	push	$0
+	pop	%es
+// Immediately after MBR.
+	mov	$s2start,	%bx
+// int 13h ah=2h, read CHS into memory.
+	mov	$0x2,		%ah
+	int	$0x13
+
+// Set the $EREADERR errno flag if something goes wrong.
+	jc	.Lload_stage2_readerr
+	or	%ah,		%ah
+// If all looks good return.
+	jz	.Lload_stage2_fin
+// 	jmp	.Lload_stage2_readerr
+
+.Lload_stage2_readerr:
+	orw	$EREADERR,	errno
+//	jmp	.Lload_stage2_fin
+
+.Lload_stage2_fin:
+// Restore registers.
+	pop	%dx
+	pop	%cx
+	pop	%bx
+	pop	%es
+
+	mov	%bp,		%sp
+	pop	%bp
+	ret
+// }
 
 // Print a string using the BIOS intrupt calls.
-// void puts (const char *) {
+// void puts (const uint16_t *str) {
 puts:
 	push	%bp
 	mov	%sp,		%bp
@@ -57,60 +240,150 @@ puts:
 	ret
 // }
 
-// Compare string.
-// short puts (const char *s1, const char *s2) {
-cmpstr:
+// Halt forever, no matter what.
+freeze:
+	hlt
+	jmp	freeze
+
+// Display error if something goest wrong.
+readerr:
+	push	$readerrmsg
+	call	puts
+// There is no need to clear the stack, we've given up.
+//	add	$2,		%sp
+// Require manual reboot.
+	jmp	freeze
+
+baddos:
+	push	$baddosmsg
+	call	puts
+// There is no need to clear the stack, we've given up.
+//	add	$2,		%sp
+// Require manual reboot.
+	jmp	freeze
+
+noboot:
+	push	$nobootmsg
+	call	puts
+// There is no need to clear the stack, we've given up.
+//	add	$2,		%sp
+// Require manual reboot.
+	jmp	freeze
+
+/* ****************************** */
+/* ************ DATA ************ */
+/* ****************************** */
+
+.section	.data
+
+// NOTE: The data segment goes into the MBR along with .stage1.
+
+// Valid input booting message.
+validmsg:
+	.asciz	"\r\nBooting ...\r\n"
+
+// Disk failure message.
+readerrmsg:
+	.asciz	"Disk failure!"
+
+// Bad DOS table message.
+baddosmsg:
+	.asciz "Bad DOS table!"
+
+// Not bootable partition error message.
+nobootmsg:
+	.asciz	"No bootable part!"
+
+// Unknown failure
+//unknownmsg:
+//	.asciz	"Fail?"
+
+// Errno, like C.
+errno:
+	.word	0x00
+
+// LBA load data.
+	.align	4
+lbapack:
+// Size of packet.
+	.byte	0x10
+// Reserved.
+	.byte	0x00
+// Number of sectors to read.  Some bios only support 127,
+// so we will max out there.
+blkcount:
+	.word	0x0000
+// Bootloader start (16-bit segment:16-bit offset).
+// This we will treat as readonly.
+kernelstart:
+// Transfer buffer offset.
+	.word	0x0000
+// Transfer buffer segement.
+	.word	0x07e0
+// Start LBA (0 indexed!).  This is the start that the bootloader partion must be at.
+// This is also the first valid LBA for a GPT paritions.
+blkstart:
+blkstarthigh:
+// Lower 32-bits
+	.word	0x0000
+blkstartlow:
+	.word	0x0000
+// Upper 32-bits, which we won't be using.
+	.long	0x00000000
+
+
+/* ******************************* */
+/* *********** STAGE 2 *********** */
+/* ******************************* */
+
+.section	.stage2
+
+// NOTE: The stage2 segment goes after MBR containing .stage1 and .data.
+
+// Is the DOS partition index bootable (index: 0-3)?
+// Sets the $EINVALDOS errno flag if the bootable flag is anything but
+// $dosbootflag or $dosnobootflag.
+// bool is_bootable (const uint16_t part_index) {
+is_bootable:
 	push	%bp
 	mov	%sp,		%bp
 
+// Store bx
 	push	%bx
-	push	%cx
-	push	%dx
 
-// Move the first string to the source index.
-	mov	4(%bp),		%ax
-// Move the second string to %ax.
-	mov	6(%bp),		%bx
+// Get the partition address from the part_index.
+// It will be left in %ax.
+	getpart	0x4(%bp)
 
-.Lcmpstr_cmpc:
-	mov	(%eax),		%cl
-	inc	%ax
-	mov	(%ebx),		%dl
-	inc	%bx
+// Start address of bootable flag.
+// Should be zero, so omit.
+//	add	$dosboot,	%ax
 
-// if (%al < %ah) return -1;
-	cmp	%cl,		%dl
-	jl	.Lcmpstr_lt
-// else if (%al > %ah) return 1;
-	cmp	%cl,		%dl
-	jg	.Lcmpstr_gt
+// Move the bootable flag to %al.
+	mov	(%ebx),		%bl
 
-// Check to see if we have reached the end of *both* strings.
-	or	%cl,		%cl
-// If so, the strings are equal, so finish up and return.
-	jz	.Lcmpstr_eq
+// Is it bootable.
+	cmp	$dosbootflag,	%bl
+	je	.Lis_bootable_yes
 
-// Move onto the next character.
-	jmp	.Lcmpstr_cmpc
+// Is it not bootable.
+	cmp	$dosnobootflag,	%bl
+	je	.Lis_bootable_no
 
-// return -1;
-.Lcmpstr_lt:
-	mov	$-1,		%ax
-	jmp	.Lcmpstr_fin
+// Otherwise it's invalid, so fail.
+	orw	$EINVALDOS,	errno
+	jmp	.Lis_bootable_fin
 
-// return 1;
-.Lcmpstr_gt:
-	mov	$1,		%ax
-	jmp	.Lcmpstr_fin
+.Lis_bootable_yes:
+	mov	$true,		%ax
+	jmp	.Lis_bootable_fin
 
-// return 0;
-.Lcmpstr_eq:
-	mov	$0,		%ax
+.Lis_bootable_no:
+	mov	$false,		%ax
+//	jmp	.Lis_bootable_fin
 
-.Lcmpstr_fin:
+.Lis_bootable_fin:
 // Restore registers.
-	pop	%dx
-	pop	%cx
 	pop	%bx
 
 	mov	%bp,		%sp
@@ -118,270 +391,277 @@ cmpstr:
 	ret
 // }
 
-// Do the thing, Julie.
-boot:
+// Find the bootable DOS partition index.
+// Sets the $EINVALDOS errno flag if the DOS partition is invalid.
+// Sets the $ENOBOOTABLE errno flag if the DOS partition does not
+// contain a bootable partition.
+// uint16_t find_bootable () {
+find_bootable:
+	push	%bp
+	mov	%sp,		%bp
 
-// Count the number of useble drives.
-count:
+// Save registers.
+	push	%bx
 
-// Initialize the disk index to the first disk (this disk).
-	mov	$0x80,		%dl
+// Start at zero.
+	mov	$0x0,		%bx
 
-// Reset disk, use %dl as disk index.
-reset:
+.Lfind_bootable_trypart:
+// Check if the current part_index is bootable
+	push	%bx
+	call	is_bootable
+	add	$0x2,		%sp
 
-// Use the BIOS to reset the disk.
-	mov	$0x00,		%ah
-	int	$0x13
+// Error occurred, finish up real quick.
+	cmpw	$ENOERR,	errno
+	jne	.Lfind_bootable_fin
 
-// Check if the current disk index in %dl is useable.
-ckdisk:
+// If it is, return it.
+	cmp	$true,		%ax
+	je	.Lfind_bootable_ret
 
-// Get the status from the last reset operation from the BIOS.
-	mov	$0x01,		%ah
-	int	$0x13
-
-// If the last reset ended in anything other than success,
-// we've found the first drive index that is not useable.
-	cmp	$0,		%ah
-	jne	numdisks
-
-// Increment the drive index.
-	inc	%dl
-
-// Check if we've surpased the maximum supprted drive index.
-	cmp	(maxdrives),	%dl
-// If we haven't check for the next drive.
-	jl	reset
-
-// Get the number of disks from the first bad disk index in %dl.
-numdisks:
-
-// Decrement the disk number so it represents the last good disk.
-	dec	%dl
-
-// Compute the number of disks, and put it in %dx.
-	sub	$0x80,		%dx
-
-// Ask the user to select a disk to boot from.
-ask:
-
-// Display "Boot from [".
-	push	$prompt
-	call	puts
-	add	$2,		%sp
-
-// If there is only one good disk to choose from,
-// don't show the use a range of disks to select,
-// just jump to the end of the prompt.
-	cmp	$0,		%dx
-	je	eask
-
-// Show the start of the range "0-"
-	push	$srange
-	call	puts
-	add	$2,		%sp
-
-// Finish displaying the boot selection prompt.
-eask:
-
-// Print the last valid drive index to the console.
-// Convert the drive index to a string.
-	mov	numbs(,%edx,2),	%cx
-// Print the drive index string.
-	push	%cx
-	call	puts
-	add	$2,		%sp
-
-// Print the end of the prompt "]: ".
-	push	$eprompt
-	call	puts
-	add	$2,		%sp
-
-// Get the drive selection from the user.
-getsel:
-
-// We are going to use the read keyboard scancode BIOS interupt function.
-	mov	$0x00,		%ah
-
-// Renable interupts, so we can listen to the keyboard input.
-	sti
-
-// Use the scancode BIOS interupt function.
-	int	$0x16
-
-// Wait for the users keyboard input.
-	hlt
-
-// Disable interupts again.
-	cli
-
-// Print the character in %al, the one just entered by the user.
-// Put a null byte into %ah,
-// this will terminate the string begining with %al.
-	mov	$0x00,		%ah
-// Push the string onto the stack.
-	push	%ax
-// Call puts, the stack pointer points at the
-// string obtained from the keyboard scancode input.
-	push	%sp
-	call	puts
-	add	$2,		%sp
-// Pop the input string into %cx instead of ax
-	pop	%cx
-
-// size_t i = numbs;
-	mov	$0,		%bx
-
-// Get the index from the input.
-cksel:
-
-// if (NULL == numbs[i]) goto inval;
-	mov	numbs(,%ebx,2),	%ax
-	cmp	$0,		%ax
-	je	inval
-
-// Comapre cur and the keyboard input.
-// Push the keyboard input onto the stack.
-	push	%cx
-// Push the address of the keyboard input to the stack.
-	push	%sp
-// Push the address of our current numbs comparision to the stack.
-	push	%ax
-	call	cmpstr
-	add	$4,		%sp
-	pop	%cx
-
-
-// If they are not equal try the next one.
-	or	%ax,		%ax
-	jz	inindex
-// i++;
 	inc	%bx
-	jmp	cksel
+	cmp	$dosmaxpart,	%bx
+	jl	.Lfind_bootable_trypart
 
-inindex:
-// Check if index is in range.
-	cmp	%bl,		%dl
-	jl	inval
+// We could not find a bootable partition, error.
+	orw	$ENOBOOTABLE,	errno
+	jmp	.Lfind_bootable_fin
 
-// Boot!
+.Lfind_bootable_ret:
+// Found a bootable partition, return it.
+	mov	%bx,		%ax
+//	jmp	.Lfind_bootable_fin
+
+.Lfind_bootable_fin:
+// Restore registers.
+	pop	%bx
+
+	mov	%bp,		%sp
+	pop	%bp
+	ret
+// }
+
+// Find the start address of a DOS partition.
+// void get_lba_start(const uint16_t part_index, uint16_6 *high_dest, uint16_t *low_dest) {
+get_lba_start:
+	push	%bp
+	mov	%sp,		%bp
+
+// Store registers.
+	push	%bx
+
+// Get the partition address from the part_index.
+// It will be left in %ax.
+	getpart	0x4(%bp)
+
+// Add the offset for the LBA start to the partition address.
+	add	$doslbast,	%ax
+
+// LBA start address of the partition is not 4-byte aligned,
+// so we need to do it in two steps.  This also keeps compatibility,
+// with 16-bit only CPUs, not that it matters.
+
+// Fetch the high-order two bytes of the LBA start.
+	mov	(%eax),		%bx
+// Fetch the low-order two bytes from the LBA start.
+	add	$0x02,		%ax
+// We're done with %ax now, so we'll reusse it.
+	mov	(%eax),		%ax
+
+// Move the high order bits to our lbapack.
+	mov	%bx,		0x6(%bp)
+// Move the low order bits to our lbapack
+	mov	%ax,		0x8(%bp)
+
+// Restore registers.
+	pop	%bx
+
+	mov	%bp,		%sp
+	pop	%bp
+	ret
+// }
+
+// Get the length (maxed to 0x7f) of the DOS partition.
+// uint16_t get_lba_safe_len(const uint16_t part_index) {
+get_lba_safe_len:
+	push	%bp
+	mov	%sp,		%bp
+
+// Store registers.
+	push	%bx
+
+// Get the partition address from the part_index.
+// It will be left in %ax.
+	getpart	0x4(%bp)
+
+// Add the offset for the LBA start to the partition address.
+	add	$doslbalen,	%ax
+
+// Fetch the low-order two bytes from the LBA start.
+	add	$0x02,		%ax
+// We're done with %ax now, so we'll put the result right in %ax for ret.
+	mov	(%eax),		%ax
+
+// Now we'll max out the value at 0x7f,
+// fortunetly it's all bits so we can just mask it.
+	and	$0x7f,		%ax
+
+// Restore registers.
+	pop	%bx
+
+	mov	%bp,		%sp
+	pop	%bp
+	ret
+// }
+
+// Intialize the lbapack.
+// Sets the $EINVALDOS errno flag if the DOS partition is invalid.
+// Sets the $ENOBOOTABLE errno flag if the DOS partition does not
+// void init_lba_pack () {
+init_lba_pack:
+	push	%bp
+	mov	%sp,		%bp
+
+// The bootable partition index will be in %ax.
+	call	find_bootable
+
+// If an error occurred ret real quick.
+	cmpw	$ENOERR,	errno
+	jne	.Linit_lba_pack_fin
+
+// Call put the start LBA in the lbapack.
+	push	%ax
+	push	$blkstarthigh
+	push	$blkstartlow
+	call	get_lba_start
+	add	$0x4,		%sp
+	pop	%ax
+
+// If an error occurred ret real quick.
+	cmpw	$ENOERR,	errno
+	jne	.Linit_lba_pack_fin
+
+// Get the safe bootable partition length.
+	push	%ax
+	call	get_lba_safe_len
+// We don't need the partition index any more,
+// so there is no need to restore it.
+
+// Put the safe LBA length into the lbapack.
+	mov	%ax,		blkcount
+
+// If an error occurred ret real quick.
+	cmpw	$ENOERR,	errno
+	jne	.Linit_lba_pack_fin
+
+.Linit_lba_pack_fin:
+	mov	%bp,		%sp
+	pop	%bp
+	ret
+// }
+
+// Load the kernel.
+// void load_kernel (const uint16_t drive_index) {
+load_kernel:
+	push	%bp
+	mov	%sp,		%bp
+
+// Save registers.
+	push	%si
+	push	%dx
+
+// Drive index
+	mov	0x4(%bp),	%dl
+
+// Reset the drive.
+	push	%dx
+	call	reset_drive
+	add	$2,		%sp
+
+// LBA load info.
+	mov	$lbapack,	%si
+// %dl should already be correct.
+//	xchg	%dl,		%dl
+// int 13h ah=42h, load by LBA into memory.
+	mov	$0x42,		%ah
+	int	$0x13
+
+// Set the $EREADERR errno flag if something goes wrong.
+	jc	.Lload_kernel_readerr
+	or	%ah,		%ah
+// If all looks good return.
+	jz	.Lload_kernel_fin
+// 	jmp	.Lload_kernel_readerr
+
+.Lload_kernel_readerr:
+	orw	$EREADERR,	errno
+//	jmp	.Lload_kernel_fin
+
+.Lload_kernel_fin:
+// Restore registers.
+	pop	%dx
+	pop	%si
+
+	mov	%bp,		%sp
+	pop	%bp
+	ret
+// }
+
+// Do the thing, Julie.
+// void boot(uint16_t *driveindex) {
+boot:
+// This function should never return,
+// so forget about saving the base pointer.
+//	push	%bp
+	mov	%sp,		%bp
+
+// Initialize the lbapack.
+	call	init_lba_pack
+
+// If an error occured, it's either because
+// we failed to find a bootable partition,
+// or because it's either because the DOS is bad.
+	cmpw	$ENOBOOTABLE,	errno
+	je	noboot
+	cmpw	$ENOERR,	errno
+	jne	baddos
+
+// Show that we're booting before we start the read
+// (which may be long on slow media).
 	push	$validmsg
 	call	puts
 	add	$2,		%sp
 
-// Get BIOS index from %dl
-	add	$0x80,		%dl
-	jmp	loadbl
-
-// Got invalid input from the user.
-inval:
-
-// Print "Invalid input.".
-	push	$invalmsg
-	call	puts
+// Push the drive index as the first argument of load_kernel.
+	push	0x4(%bp)
+	call	load_kernel
 	add	$2,		%sp
 
-// Try again
-	jmp	ask
+// If an error occured, it's because the BIOS failed to read the drive.
+	cmpw	$ENOERR,	errno
+	jne	readerr
 
-// Load the bootloader, use BIOS disk index in %dl.
-loadbl:
+// TODO: do something.
+	jmp	freeze
 
-// Check for LBA extensions
-	mov	$lbapack,	%si
-	mov	$0x42,		%ah
-// %dl is already correct.
-//	xchg	%dl,		%dl
-	int	$0x13
+// Hopefully, we will never reach here,
+//	jmp	.Lboot_fin
 
-// Exec the bootloader if everything goes well.
-	jc	readerr
-	or	%ah,		%ah
-	jz	execbl
-
-// Display error if something goest wrong.
-readerr:
-	push	$failmsg
-	call	puts
+//.Lboot_fin:
+//	push	$unknownmsg
+//	call	puts
 // There is no need to clear the stack, we've given up.
 //	add	$2,		%sp
-// Require reboot.
-	hlt
 
-// Execute the bootloader.
-execbl:
-// TODO: do something.
-	hlt
+// This function should never return,
+// so forget about restoring the stack and base pointers.
+//	mov	%bp,		%sp
+//	pop	%bp
+//	ret
 
-// The begaining of the boot selection prompt string.
-prompt:
-	.asciz	"Boot from ["
-
-// The begining of the range of bootable drives.
-srange:
-	.asciz	"0-"
-
-// The end of the boot selection prompt string.
-eprompt:
-	.asciz	"]: "
-
-// Invalid input error message.
-invalmsg:
-	.asciz	"\r\nInvalid input.\r\n"
-
-// Valid input booting message.
-validmsg:
-	.asciz	"\r\nBooting ...\r\n"
-
-// Disk failure message.
-failmsg:
-	.asciz	"Disk failure!"
-
-// The exclusive maximum drive index supported.
-maxdrives:
-	.word	0x84
-
-// LBA load data.
-	.align	2
-lbapack:
-// Size of packet.
-	.byte	0x10
-// Reserved.
-	.byte	0x00
-// Number of sectors to read, some bios only support 127,
-// fortunetly we only need 127.
-blkcount:
-	.word	0x007f
-// Bootloader start (16-bit segment:16-bit offset).
-loaderstart:
-// Transfer buffer offset.
-	.word	0x0000
-// Transfer buffer segement.
-	.word	0x07e0
-// Start LBA (1 indexed!).  This is the start that the bootloader partion must be at.
-// This is also the first valid LBA for a GPT paritions.
-blkstart:
-// Lower 32-bits
-	.long	0x00000022
-// Upper 32-bits (really 16-bits with 48-bit LBAs?)
-	.long	0x00000000
-
-// A NULL-terminated array of digit strings up to 4.
-	.align	2
-numbs:
-	.word	.nums_0
-	.word	.nums_1
-	.word	.nums_2
-	.word	.nums_3
-	.word	0
-.nums_0:
-	.string	"0"
-.nums_1:
-	.string	"1"
-.nums_2:
-	.string	"2"
-.nums_3:
-	.string	"3"
+// If all else fails, freeze forever.
+//	jmp	freeze
+// }
 
 // vim: set ts=8 sw=8 noet syn=asm:

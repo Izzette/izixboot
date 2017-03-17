@@ -15,7 +15,8 @@ SECTIONS
         into a text segment for now, including data.
         Who cares? Other segments only exist to appease C compilers.
          */
-        *(.text)
+        *(.stage1)
+        *(.data)
 
         /*
         Magic bytes. 0x1FE == 510.
