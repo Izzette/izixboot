@@ -40,12 +40,13 @@
 // Safe LBA max to read with bios
 .set	lbasafemax,	0x7f
 
-// Kernel entry point
-.set	kentryseg,	0x08
-.set	kentryoffset,	0x8f80
+.set	heapstart,	0x0500
 
-// The GDT registry
-.set	gdtr,		0x0500
+// The GDT registry.
+.set	gdtr,		heapstart
+// The GDT.  The GDT registry is only 6 bytes long,
+// but lets just make sure it's aligned to 4.
+.set	gdt,		heapstart+8
 
 // Get DOS partition address.
 // Addess will be left in %ax.
@@ -244,6 +245,58 @@ puts:
 	ret
 // }
 
+// Copy memory.
+// void *memcpy (void *dest, void *src, size_t n) {
+memcpy:
+	push	%bp
+	mov	%sp,		%bp
+
+// Store registers.
+	push	%bx
+	push	%cx
+	push	%dx
+	push	%si
+
+// Our destination address.
+	mov	0x4(%bp),	%cx
+// Our source address.
+	mov	0x6(%bp),	%si
+
+// Our number of bytes.
+	mov	0x8(%bp),	%dx
+
+// size_t i = 0;
+	mov	$0,		%bx
+
+.Lmemcpy_movb:
+// Load the next byte into %al from the source index, then increment %si.
+	lodsb
+
+// Move the byte.
+	mov	%al,		(%ecx)
+
+// Increment the destination pointer, the source has already been incremented.
+	inc	%cx
+
+// Increment i, and compare against n for continuation.
+	inc	%bx
+	cmp	%dx,		%bx
+	jl	.Lmemcpy_movb
+
+// Return dest.
+	mov	0x4(%bp),	%ax
+
+// Restore registers.
+	pop	%si
+	pop	%dx
+	pop	%cx
+	pop	%bx
+
+	mov	%bp,		%sp
+	pop	%bp
+	ret
+// }
+
 // Halt forever, no matter what.
 freeze:
 	hlt
@@ -329,6 +382,21 @@ blkstarthigh:
 // Upper 32-bits, which we won't be using.
 	.long	0x00000000
 
+// GDT prototype
+gdtproto:
+// NULL descriptor
+	.long   0x00000000
+	.long   0x00000000
+// Code descriptor
+	.long	0x0000FFFF
+	.long	0x00CF9A00
+// Data descriptor
+	.long	0x0000FFFF
+	.long	0x00CF9200
+gdtprotoend:
+// Make sure there's something here and gdtend oesn't extend into stage2.
+	.byte	0x00
+.set	gdtlen,	gdtprotoend-gdtproto
 
 /* ******************************* */
 /* *********** STAGE 2 *********** */
@@ -636,6 +704,54 @@ load_kernel:
 	ret
 // }
 
+// Initialize the GDT
+// void init_gdt () {
+init_gdt:
+	push	%bp
+	mov	%sp,		%bp
+
+// Copy the GDT prototype.
+	push	$gdtlen
+	push	$gdtproto
+	push	$gdt
+	call	memcpy
+	add	$0x6,		%sp
+
+// Create the descriptor registry.
+	movw	$gdtlen-1,	gdtr
+	movl	$gdt,		gdtr+2
+
+	mov	%bp,		%sp
+	pop	%bp
+	ret
+// }
+
+// Enter protected mode and execute the kernel.
+// void kexec () {
+kexec:
+// There's no coming back from here,
+// so forget about saving the base pointer.
+//	push	%bp
+	mov	%sp,		%bp
+
+// Load the GDT registry.
+	lgdt	gdtr
+
+// set PE (Protection Enable) bit in CR0 (Control Register 0)
+	mov	%cr0,		%eax
+	or	$1,		%eax
+	mov	%eax,		%cr0
+
+// Jump to 32-bit protected mode code
+	ljmp	$0x08,		$pmode
+
+// This function should never return,
+// so forget about restoring the stack and base pointers.
+//	mov	%bp,		%sp
+//	pop	%bp
+//	ret
+// }
+
 // Do the thing, Julie.
 // void boot (uint16_t *driveindex) {
 boot:
@@ -670,36 +786,11 @@ boot:
 	cmpw	$ENOERR,	errno
 	jne	readerr
 
-// TODO: do something.
+// Create the GDT, but don't load it yet.
+	call	init_gdt
+
+// Switch to 32-bit protected mode and execute the kernel.
 	call	kexec
-
-// This function should never return,
-// so forget about restoring the stack and base pointers.
-//	mov	%bp,		%sp
-//	pop	%bp
-//	ret
-// }
-
-// We're moving into 32-bit protected mode.
-.code32
-
-// Enter protected mode and execute the kernel.
-// void kexec () {
-kexec:
-// There's no coming back from here,
-// so forget about saving the base pointer.
-//	push	%bp
-	mov	%sp,		%bp
-
-// Load the GDT registry.
-	lgdt	gdtr
-
-// set PE (Protection Enable) bit in CR0 (Control Register 0)
-	mov	%cr0,		%eax
-	or	$1,		%eax
-	mov	%eax,		%cr0
-
-	ljmp	$kentryseg,	$kentryoffset
 
 // This function should never return,
 // so forget about restoring the stack and base pointers.
