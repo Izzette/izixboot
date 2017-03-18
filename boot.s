@@ -40,6 +40,13 @@
 // Safe LBA max to read with bios
 .set	lbasafemax,	0x7f
 
+// Kernel entry point
+.set	kentryseg,	0x08
+.set	kentryoffset,	0x8f80
+
+// The GDT registry
+.set	gdtr,		0x0500
+
 // Get DOS partition address.
 // Addess will be left in %ax.
 .macro getpart part_index
@@ -288,10 +295,6 @@ baddosmsg:
 // Not bootable partition error message.
 nobootmsg:
 	.asciz	"No bootable part!"
-
-// Unknown failure
-//unknownmsg:
-//	.asciz	"Fail?"
 
 // Errno, like C.
 errno:
@@ -634,7 +637,7 @@ load_kernel:
 // }
 
 // Do the thing, Julie.
-// void boot(uint16_t *driveindex) {
+// void boot (uint16_t *driveindex) {
 boot:
 // This function should never return,
 // so forget about saving the base pointer.
@@ -668,25 +671,41 @@ boot:
 	jne	readerr
 
 // TODO: do something.
-	jmp	freeze
-
-// Hopefully, we will never reach here,
-//	jmp	.Lboot_fin
-
-//.Lboot_fin:
-//	push	$unknownmsg
-//	call	puts
-// There is no need to clear the stack, we've given up.
-//	add	$2,		%sp
+	call	kexec
 
 // This function should never return,
 // so forget about restoring the stack and base pointers.
 //	mov	%bp,		%sp
 //	pop	%bp
 //	ret
+// }
 
-// If all else fails, freeze forever.
-//	jmp	freeze
+// We're moving into 32-bit protected mode.
+.code32
+
+// Enter protected mode and execute the kernel.
+// void kexec () {
+kexec:
+// There's no coming back from here,
+// so forget about saving the base pointer.
+//	push	%bp
+	mov	%sp,		%bp
+
+// Load the GDT registry.
+	lgdt	gdtr
+
+// set PE (Protection Enable) bit in CR0 (Control Register 0)
+	mov	%cr0,		%eax
+	or	$1,		%eax
+	mov	%eax,		%cr0
+
+	ljmp	$kentryseg,	$kentryoffset
+
+// This function should never return,
+// so forget about restoring the stack and base pointers.
+//	mov	%bp,		%sp
+//	pop	%bp
+//	ret
 // }
 
 // vim: set ts=8 sw=8 noet syn=asm:
