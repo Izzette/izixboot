@@ -314,7 +314,7 @@ kernelstart:
 // Transfer buffer offset.
 	.word	0x0000
 // Transfer buffer segement.
-	.word	0x07f0
+	.word	0x0800
 // Start LBA (0 indexed!).  This is the start that the bootloader partion must be at.
 // This is also the first valid LBA for a GPT paritions.
 blkstart:
