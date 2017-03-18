@@ -1,5 +1,5 @@
 // boot.s
-// A simple MBR bootloader supporting up to 4 drives.
+// A simple MBR (+ LBA 1) bootloader for the izix kernel.
 
 /* ******************************* */
 /* *********** MACROS ************ */
