@@ -35,7 +35,7 @@
 // DOS partition LBA start offset.  NOT ALIGNED.
 .set	doslbast,	0x08
 // DOS partition LBA total length.  NOT ALIGNED.
-.set	doslbalen,	0xc0
+.set	doslbalen,	0x0c
 
 // Safe LBA max to read with bios
 .set	lbasafemax,	0x7f
@@ -275,7 +275,7 @@ noboot:
 
 // Valid input booting message.
 validmsg:
-	.asciz	"\r\nBooting ...\r\n"
+	.asciz	"Booting ...\r\n"
 
 // Disk failure message.
 readerrmsg:
@@ -314,14 +314,14 @@ kernelstart:
 // Transfer buffer offset.
 	.word	0x0000
 // Transfer buffer segement.
-	.word	0x07e0
+	.word	0x07f0
 // Start LBA (0 indexed!).  This is the start that the bootloader partion must be at.
 // This is also the first valid LBA for a GPT paritions.
 blkstart:
-blkstarthigh:
 // Lower 32-bits
-	.word	0x0000
 blkstartlow:
+	.word	0x0000
+blkstarthigh:
 	.word	0x0000
 // Upper 32-bits, which we won't be using.
 	.long	0x00000000
@@ -445,6 +445,7 @@ get_lba_start:
 
 // Store registers.
 	push	%bx
+	push	%dx
 
 // Get the partition address from the part_index.
 // It will be left in %ax.
@@ -457,19 +458,30 @@ get_lba_start:
 // so we need to do it in two steps.  This also keeps compatibility,
 // with 16-bit only CPUs, not that it matters.
 
-// Fetch the high-order two bytes of the LBA start.
-	mov	(%eax),		%bx
 // Fetch the low-order two bytes from the LBA start.
+	mov	(%eax),		%bx
+
+// Fetch the high-order two bytes of the LBA start.
 	add	$0x02,		%ax
 // We're done with %ax now, so we'll reusse it.
 	mov	(%eax),		%ax
 
+// Get the address off our high order bits.
+	mov	%bp,		%dx
+	add	$0x6,		%dx
+	mov	(%edx),		%dx
 // Move the high order bits to our lbapack.
-	mov	%bx,		0x6(%bp)
+	mov	%ax,		(%edx)
+
+// Get the address off our low order bits.
+	mov	%bp,		%dx
+	add	$0x8,		%dx
+	mov	(%edx),		%dx
 // Move the low order bits to our lbapack
-	mov	%ax,		0x8(%bp)
+	mov	%bx,		(%edx)
 
 // Restore registers.
+	pop	%dx
 	pop	%bx
 
 	mov	%bp,		%sp
@@ -493,15 +505,33 @@ get_lba_safe_len:
 // Add the offset for the LBA start to the partition address.
 	add	$doslbalen,	%ax
 
-// Fetch the low-order two bytes from the LBA start.
+// Fetch the low-order two bytes from the LBA length.
+	mov	(%eax),		%bx
+
+// Fetch the high-order two bytes of the LBA start.
 	add	$0x02,		%ax
-// We're done with %ax now, so we'll put the result right in %ax for ret.
+// We're done with %ax now, so we'll reusse it.
 	mov	(%eax),		%ax
 
-// Now we'll max out the value at 0x7f,
-// fortunetly it's all bits so we can just mask it.
-	and	$0x7f,		%ax
+// Now we'll max out the value at 0x7f.
 
+// If there is anything but zero %ax, it's larger.
+	or	%ax,		%ax
+	jnz	.Lget_lba_safe_len_greater
+
+// If %bx is larger than $lbasafeamx, it's larger.
+	cmp	$lbasafemax,	%bx
+	jg	.Lget_lba_safe_len_greater
+
+// Otherwise it's in the safe range, and we will use it.
+	mov	%bx,		%ax
+	jmp	.Lget_lba_safe_len_fin
+
+.Lget_lba_safe_len_greater:
+	mov	$lbasafemax,	%ax
+//	jmp	.Lget_lba_safe_len_fin
+
+.Lget_lba_safe_len_fin:
 // Restore registers.
 	pop	%bx
 
@@ -526,12 +556,12 @@ init_lba_pack:
 	jne	.Linit_lba_pack_fin
 
 // Call put the start LBA in the lbapack.
-	push	%ax
-	push	$blkstarthigh
 	push	$blkstartlow
+	push	$blkstarthigh
+	push	%ax
 	call	get_lba_start
-	add	$0x4,		%sp
 	pop	%ax
+	add	$0x4,		%sp
 
 // If an error occurred ret real quick.
 	cmpw	$ENOERR,	errno
@@ -629,7 +659,7 @@ boot:
 	add	$2,		%sp
 
 // Push the drive index as the first argument of load_kernel.
-	push	0x4(%bp)
+	push	%dx
 	call	load_kernel
 	add	$2,		%sp
 
