@@ -80,8 +80,8 @@
 /* *********** STAGE 1 *********** */
 /* ******************************* */
 
-.section .stage1
-
+.section	.stage1
+.global		_start
 _start:
 // Disable those pesky interupts.
 	cli
@@ -332,6 +332,7 @@ noboot:
 /* ****************************** */
 
 // NOTE: The data segment goes into the MBR along with .stage1.
+.section	.data
 
 // Valid input booting message.
 validmsg:
@@ -402,7 +403,7 @@ gdtprotoend:
 /* *********** STAGE 2 *********** */
 /* ******************************* */
 
-.section .stage2
+.section	.stage2
 
 // NOTE: The stage2 segment goes after MBR containing .stage1 and .data.
 

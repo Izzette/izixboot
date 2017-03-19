@@ -1,64 +1,64 @@
+/* linker.ld */
+/* Linker script for "hybrid" two-stage MBR boot-loader. */
+
+/**
+ * Our entry point is _start.
+ * This will initialize the stack and errno,
+ * as well as load our second stage boot-loader.
+ */
+ENTRY(_start)
+
+/**
+ * We will just be using one section, the .text section.
+ */
 SECTIONS
 {
-    /*
-    We could also pass the -Ttext 0x7C00 to as instead of doing this.
-
-    If your program does not have any memory accesses, you can omit this.
-    */
-    . = 0x7c00;
-    .text :
+    /**
+     * Our ELF will start at 0x6c00 and our .text section at a 4k offset.
+     * This way our .text section starts at 0x7c00 where it will be loaded by the BIOS.
+     */
+    . = 0x7800;
+    .text BLOCK(1k) : ALIGN(1k)
     {
-        __start = .;
+		/**
+		 * We're going to fill unused space with zeros, becuase they are easier to spot.
+		 */
+		FILL(0x00);
 
-        /*
-        We are going to stuff everything
-        into a text segment for now, including data.
-        Who cares? Other segments only exist to appease C compilers.
+        /**
+         * Our stage one boot-loader will be packed in with our data.
+         * This is just to help balance space for our stage two boot-loader.
          */
         *(.stage1)
+        *(.data)
 
-        /*
-        Magic bytes. 0x1FE == 510.
+        /**
+         * This will create an error if we cannot fit our stage 1 boot-loader
+         * in the space between the start of the sector and the DOS partition table.
+         * NOTE: watch out for "cannot move position backwards (from ... to 0..07dbe)".
+         */
+        . = 0x1be;
 
-        We could add this on each Gas file separately with `.word`,
-        but this is the perfect place to DRY that out.
-        */
-        . = 0x1FE;
+        /**
+         * The magic bytes for MBR boot-sector.
+         */
+        . = 0x1fe;
         SHORT(0xAA55)
 
-        /*
-        This is only needed if we are going to use a 2 stage boot process,
-        e.g. by reading more disk than the default 512 bytes with BIOS `int 0x13`.
-         */
+        /**
+         * Our stage two boot-loader will start at LBA 1.
+		 */
+        . = 0x200;
         *(.stage2)
 
-        /*
-        Number of sectors in stage 2. Used by the `int 13` to load it from disk.
-
-        The value gets put into memory as the very last thing
-        in the `.stage` section if it exists.
-
-        We must put it *before* the final `. = ALIGN(512)`,
-        or else it would fall out of the loaded memory.
-
-        This must be absolute, or else it would get converted
-        to the actual address relative to this section (7c00 + ...)
-        and linking would fail with "Relocation truncated to fit"
-        because we are trying to put that into al for the int 13.
+        /**
+         * This will create an error if we cannot fit our stage 2 boot-loader in LBA 1.
+		 * It is also important that our boot-loader can fit before 0x8000, beccause
+		 * we will be loading our kernel at that address.
+         * NOTE: watch out for "cannot move position backwards (from ... to 0..08000)".
          */
-        __stage2_nsectors = ABSOLUTE((. - __start) / 512);
-
-        /* Ensure that the generated image is a multiple of 512 bytes long. */
-        . = ALIGN(512);
-        __end = .;
-        __end_align_4k = ALIGN(4k);
+        . = 0x400;
     }
 }
 
-/*
-The linux kernel 4.2 uses linker scripts like:
-
-- https://github.com/torvalds/linux/blob/v4.2/arch/x86/boot/setup.ld
-
-The kernel also uses the `.lds` extension for its scripts.
-*/
+/* vim: se ts=4 sw=4 noet syn=ld: */
