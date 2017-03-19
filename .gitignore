@@ -1,3 +1,4 @@
 boot
-boot.o
+boot.elf
+*.o
 _hd*

@@ -1,27 +1,31 @@
 # Makefile
 
 CC := gcc
+OBJCOPY := objcopy
 CFLAGS ?= -ggdb
 CFLAGS := $(CFLAGS) -nostdlib
 
+export
+
 all: boot
 
-boot.s:
-pmode.s:
-linker.ld:
+subsystem:
+	$(MAKE) -C src
 
-boot.o:
-	$(CC) $(CFLAGS) -m16 -c boot.s -o boot.o
-pmode.o:
-	$(CC) $(CFLAGS) -m32 -c pmode.s -o pmode.o
-
-boot.elf: boot.o pmode.o linker.ld
-	$(CC) $(CFLAGS) -m16 -T linker.ld boot.o pmode.o -o boot.elf
+boot.elf: lds/linker.ld subsystem
+	$(CC) $(CFLAGS) -m16 -T lds/linker.ld \
+		src/start.o $(filter-out src/start.o,$(wildcard src/*.o)) \
+		-o boot.elf
 
 boot: boot.elf
 	objcopy -j .text -O binary boot.elf boot
 
-clean:
-	rm -f *.o boot.elf boot
+clean: clean_local clean_subsystem
+
+clean_subsystem:
+	$(MAKE) -C src clean
+
+clean_local:
+	rm -f boot.elf boot
 
 # vim: set ts=4 sw=4 noet syn=make:

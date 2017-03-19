@@ -28,9 +28,12 @@ SECTIONS
         /**
          * Our stage one boot-loader will be packed in with our data.
          * This is just to help balance space for our stage two boot-loader.
+		 * The only thing in .text is global functions, including _start.
          */
+		*(.text)
         *(.stage1)
         *(.data)
+        *(.rodata)
 
         /**
          * This will create an error if we cannot fit our stage 1 boot-loader
