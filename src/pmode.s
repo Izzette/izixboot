@@ -1,6 +1,8 @@
 // pmode.s
 // Protected mode bootloader code.
 
+.file		"pmode.s"
+
 // Kernel entry point
 .set	kentryseg,	0x08
 .set	kentryoffset,	0x9000

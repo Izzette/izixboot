@@ -1,7 +1,7 @@
 // bool.s
 // Boolean macros.
 
-.file	"bool.s"
+.file		"bool.s"
 
 	.set	true,		1
 	.set	false,		0
