@@ -142,9 +142,11 @@ init_lba_pack:
 // LBA load data.
 	.align	4
 	.type	lbapack,	@object
+	.size	lbapack,	0x10
 lbapack:
 
 	.type	lbapackheader,	@object
+	.size	lbapackheader,	0x2
 // Header for the LBA load data.
 lbapackheader:
 // Size of packet, always 16 bytes.
@@ -152,17 +154,16 @@ lbapackheader:
 // Reserved.
 	.byte	0x00
 // END lbapackheader
-	.size	lbapackheader,	.-lbapackheader
 
 	.type	blkcount,	@object
+	.size	blkcount,	0x2
 // Number of sectors to read.  Some bios only support 127,
 // so we will max out there.
 blkcount:
 	.word	0x0000
-	.size	blkcount,	.-blkcount
 
 	.type	kernelstart,	@object
-	.size	lbapack,	0x10
+	.size	kernelstart,	0x4
 // Bootloader start (16-bit segment:16-bit offset).
 // This we will treat as readonly.
 kernelstart:
@@ -171,7 +172,6 @@ kernelstart:
 // Transfer buffer segement.
 	.word	0x0800
 // END kernelstart
-	.size	kernelstart,	.-kernelstart
 
 	.type	blkstart,	@object
 	.size	blkstart,	0x8

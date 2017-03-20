@@ -10,7 +10,7 @@
 	.align	2
 	.globl	errno
 	.type	errno,		@object
-	.size	errno,		2
+	.size	errno,		0x2
 errno:
 	.word	errno,		0x0000
 
