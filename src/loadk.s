@@ -141,15 +141,28 @@ init_lba_pack:
 
 // LBA load data.
 	.align	4
+	.type	lbapack,	@object
 lbapack:
-// Size of packet.
+
+	.type	lbapackheader,	@object
+// Header for the LBA load data.
+lbapackheader:
+// Size of packet, always 16 bytes.
 	.byte	0x10
 // Reserved.
 	.byte	0x00
+// END lbapackheader
+	.size	lbapackheader,	.-lbapackheader
+
+	.type	blkcount,	@object
 // Number of sectors to read.  Some bios only support 127,
 // so we will max out there.
 blkcount:
 	.word	0x0000
+	.size	blkcount,	.-blkcount
+
+	.type	kernelstart,	@object
+	.size	lbapack,	0x10
 // Bootloader start (16-bit segment:16-bit offset).
 // This we will treat as readonly.
 kernelstart:
@@ -157,15 +170,31 @@ kernelstart:
 	.word	0x0000
 // Transfer buffer segement.
 	.word	0x0800
+// END kernelstart
+	.size	kernelstart,	.-kernelstart
+
+	.type	blkstart,	@object
+	.size	blkstart,	0x8
 // Start LBA (0 indexed!).  This is the start that the bootloader partion must be at.
 // This is also the first valid LBA for a GPT paritions.
 blkstart:
-// Lower 32-bits
+
+	.type	blkstartlow,	@object
+	.size	blkstartlow,	0x2
+// Lower 16-bits
 blkstartlow:
 	.word	0x0000
+
+	.type	blkstarthigh,	@object
+	.size	blkstarthigh,	0x2
+// Upper 16-bits
 blkstarthigh:
 	.word	0x0000
-// Upper 32-bits, which we won't be using.
+
+	.type	blkextension,	@object
+	.size	blkextension,	0x4
+// Upper 32-bits for 48/64 bit LBA extension, which we won't be using.
+blkextension:
 	.long	0x00000000
 
 // vim: set ts=8 sw=8 noet syn=asm:

@@ -45,6 +45,7 @@ init_gdt:
 
 .section	.rodata
 
+	.type	gdtproto,	@object
 // GDT prototype
 gdtproto:
 // NULL descriptor
@@ -56,7 +57,8 @@ gdtproto:
 // Data descriptor
 	.long	0x0000FFFF
 	.long	0x00CF9200
-.set	gdtlen,	.-gdtproto
+// END gdtproto
+	.set	gdtlen,		.-gdtproto
 	.size	gdtproto,	gdtlen
 
 // vim: set ts=8 sw=8 noet syn=asm:

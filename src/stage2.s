@@ -60,8 +60,10 @@ stage2:
 // NOTE: The data segment goes into the MBR along with .stage1.
 .section	.rodata
 
+	.type	validmsg,	@object
 // Valid input booting message.
 validmsg:
 	.asciz	"Booting ...\r\n"
+	.size	validmsg,	.-validmsg
 
 // vim: set ts=8 sw=8 noet syn=asm:

@@ -7,8 +7,13 @@
 
 // We're moving into 32-bit protected mode.
 .code32
-.section .stage2
-.global pmode
+
+.section	.stage2
+
+	.global pmode
+	.type	pmode,		@function
+// Protected mode code, just setup segement registers and far jump to main.
+// void pmode () {
 pmode:
 	mov	$0x10,		%ax
 	mov	%ax,		%ds
@@ -18,5 +23,7 @@ pmode:
 	mov	%ax,		%ss
 
 	ljmp	$kentryseg,	$kentryoffset
+// }
+	.size	pmode,		.-pmode
 
 // vim: set ts=8 sw=8 noet syn=asm:

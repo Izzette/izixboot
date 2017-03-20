@@ -7,17 +7,6 @@
 
 .section	.text
 
-	.type	freeze,		@function
-// Halt forever, no matter what.
-// void freeze () {
-freeze:
-// Interupts should already be disabled
-	cli
-	hlt
-	jmp	freeze
-// }
-	.size	freeze,		.-freeze
-
 	.globl	readerr
 	.type	readerr,	@function
 // Display error if a read failure occurs.
@@ -60,18 +49,35 @@ noboot:
 // }
 	.size	noboot,		.-noboot
 
+	.type	freeze,		@function
+// Halt forever, no matter what.
+// void freeze () {
+freeze:
+// Interupts should already be disabled
+	cli
+	hlt
+	jmp	freeze
+// }
+	.size	freeze,		.-freeze
+
 .section	.rodata
 
+	.type	readerrmsg,	@object
 // Disk failure message.
 readerrmsg:
 	.asciz	"Disk failure!"
+	.size	readerrmsg,	.-readerrmsg
 
+	.type	baddosmsg,	@object
 // Bad DOS table message.
 baddosmsg:
 	.asciz "Bad DOS table!"
+	.size	baddosmsg,	.-baddosmsg
 
+	.type	nobootmsg,	@object
 // Not bootable partition error message.
 nobootmsg:
 	.asciz	"No bootable part!"
+	.size	nobootmsg,	.-nobootmsg
 
 // vim: set ts=8 sw=8 noet syn=asm:
