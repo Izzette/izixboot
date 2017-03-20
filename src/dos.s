@@ -142,16 +142,12 @@ get_lba_start:
 	mov	(%eax),		%ax
 
 // Get the address off our high order bits.
-	mov	%bp,		%dx
-	add	$0x6,		%dx
-	mov	(%edx),		%dx
+	mov	0x6(%bp),	%dx
 // Move the high order bits to our lbapack.
 	mov	%ax,		(%edx)
 
 // Get the address off our low order bits.
-	mov	%bp,		%dx
-	add	$0x8,		%dx
-	mov	(%edx),		%dx
+	mov	0x8(%bp),	%dx
 // Move the low order bits to our lbapack
 	mov	%bx,		(%edx)
 
