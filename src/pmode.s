@@ -8,7 +8,7 @@
 // We're moving into 32-bit protected mode.
 .code32
 
-.section	.stage2
+.section	.pmode
 
 	.global pmode
 	.type	pmode,		@function

@@ -26,21 +26,51 @@ SECTIONS
         FILL(0x00);
 
         /**
-         * Our stage one boot-loader will be packed in with our data.
+         * Our stage one boot-loader will be packed in with
+         * our data and our 32-bit protected mode code.
          * This is just to help balance space for our stage two boot-loader.
          * The only thing in .text is global functions, including _start.
          */
         *(.text)
         *(.stage1)
+        *(.pmode)
         *(.data)
         *(.rodata)
 
         /**
          * This will create an error if we cannot fit our stage 1 boot-loader
          * in the space between the start of the sector and the DOS partition table.
-         * NOTE: watch out for "cannot move position backwards (from ... to 0..07dbe)".
+         * NOTE: watch out for "cannot move location counter backwards (from ... to 0..07dbe)".
          */
         . = 0x1be;
+
+        /**
+         * Here we create a DOS partition table entry that can optionally be used
+         * with the boot-loader.  It creates a partition containing just LBA 1,
+         * to protect the second stage boot-loader.
+         */
+
+        /* Not bootable. */
+        BYTE(0x00)
+        /* Starting head. */
+        BYTE(0x00)
+        /* Starting cylinder (0-indexed) and sector (1-indexed). */
+        SHORT(0x0002)
+        /* Non-FS data. */
+        BYTE(0xda)
+        /* Ending head. */
+        BYTE(0x00)
+        /* Ending cylinder and sector. */
+        SHORT(0x0002)
+        /* Starting LBA (0-indexed). */
+        LONG(0x00000001)
+        /* Sectors in parition. */
+        LONG(0x00000001)
+
+        /* Remaining partitions, empty, for good measure. */
+        QUAD(0x0000000000000000) QUAD(0x0000000000000000)
+        QUAD(0x0000000000000000) QUAD(0x0000000000000000)
+        QUAD(0x0000000000000000) QUAD(0x0000000000000000)
 
         /**
          * The magic bytes for MBR boot-sector.
@@ -58,10 +88,10 @@ SECTIONS
          * This will create an error if we cannot fit our stage 2 boot-loader in LBA 1.
          * It is also important that our boot-loader can fit before 0x8000, beccause
          * we will be loading our kernel at that address.
-         * NOTE: watch out for "cannot move position backwards (from ... to 0..08000)".
+         * NOTE: watch out for "cannot move location counter backwards (from ... to 0..08000)".
          */
         . = 0x400;
     }
 }
 
-/* vim: se ts=4 sw=4 et syn=ld: */
+/* vim: set ts=4 sw=4 et syn=ld: */
