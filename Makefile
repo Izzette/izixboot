@@ -22,6 +22,8 @@ $(objects16):%.o:%.s
 $(objects32):%.o:%.s
 	$(CC) $(CFLAGS) -I./src -m32 -c $< -o $@
 
+include $(wildcard src/*.d)
+
 boot.elf: lds/linker.ld $(bootobjects)
 	$(CC) $(CFLAGS) -m16 -T lds/linker.ld \
 		src/start.o $(filter-out src/start.o,$(bootobjects)) \
