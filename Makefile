@@ -5,27 +5,40 @@ OBJCOPY := objcopy
 CFLAGS ?= -ggdb
 CFLAGS := $(CFLAGS) -nostdlib
 
-export
+objects16 := dos.o errno_data.o fail.o gdt.o heap.o loadk.o \
+             reset.o stage1.o stage2.o start.o stdio.o string.o
+objects16 := $(addprefix src/,$(objects16))
+
+objects32 := pmode.o
+objects32 := $(addprefix src/,$(objects32))
+
+bootobjects := $(objects16) $(objects32)
 
 all: boot
 
-subsystem:
-	$(MAKE) -C src
+$(objects16):%.o:%.s
+	$(CC) $(CFLAGS) -I./src -m16 -c $< -o $@
 
-boot.elf: lds/linker.ld subsystem
+$(objects32):%.o:%.s
+	$(CC) $(CFLAGS) -I./src -m32 -c $< -o $@
+
+boot.elf: lds/linker.ld $(bootobjects)
 	$(CC) $(CFLAGS) -m16 -T lds/linker.ld \
-		src/start.o $(filter-out src/start.o,$(wildcard src/*.o)) \
+		src/start.o $(filter-out src/start.o,$(bootobjects)) \
 		-o boot.elf
 
 boot: boot.elf
 	objcopy -j .text -O binary boot.elf boot
 
-clean: clean_local clean_subsystem
+clean: clean_src clean_boot_elf clean_boot
 
-clean_subsystem:
-	$(MAKE) -C src clean
+clean_src:
+	rm -f src/*.o
 
-clean_local:
-	rm -f boot.elf boot
+clean_boot_elf:
+	rm -f boot.elf
+
+clean_boot:
+	rm -f boot
 
 # vim: set ts=4 sw=4 noet syn=make:
