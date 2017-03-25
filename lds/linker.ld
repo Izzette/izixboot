@@ -15,9 +15,14 @@ SECTIONS
 {
     /**
      * Our ELF will start at 0x7800 and our .text section at a 1k offset.
-     * This way our .text section starts at 0x7c00 where it will be loaded by the BIOS.
      */
     . = 0x7800;
+
+    /**
+     * This will ensure that our text section starts at 0x7c00 where it will
+     * be loaded by the BIOS.
+     */
+    . = 0x7c00;
     .text BLOCK(1k) : ALIGN(1k)
     {
         /**
