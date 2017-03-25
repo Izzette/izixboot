@@ -51,8 +51,6 @@ load_stage2:
 	mov	%sp,		%bp
 
 // Store registers.
-// TODO: do we really need to save %es?
-	push	%es
 	push	%bx
 	push	%cx
 	push	%dx
@@ -77,10 +75,7 @@ load_stage2:
 	mov	$2,		%cl
 // Number of sectors to read.
 	mov	$1,		%al
-// Segement to read to.
-// First segment.
-	push	$0
-	pop	%es
+
 // Immediately after MBR.
 	mov	$s2start,	%bx
 // int 13h ah=2h, read CHS into memory.
@@ -103,7 +98,6 @@ load_stage2:
 	pop	%dx
 	pop	%cx
 	pop	%bx
-	pop	%es
 
 	mov	%bp,		%sp
 	pop	%bp

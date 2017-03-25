@@ -22,6 +22,20 @@ _start:
 // Disable those pesky interupts.
 	cli
 
+// Set all segments to 0, except %cs which requires a far jump/call.
+	mov	$0x00,		%ax
+	mov	%ax,		%ds
+	mov	%ax,		%es
+	mov	%ax,		%fs
+	mov	%ax,		%gs
+	mov	%ax,		%ss
+
+// Ensure %cs is 0x00.
+	ljmp	$0x00,		$.L_start_reload_cs
+
+// Reload the code segment.
+.L_start_reload_cs:
+
 // Initialize the stack.
 	mov	$mbrstart,	%sp
 	mov	%sp,		%bp

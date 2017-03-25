@@ -180,12 +180,10 @@ get_lba_safe_len:
 	add	$doslbalen,	%ax
 
 // Fetch the low-order two bytes from the LBA length.
-	mov	(%eax),		%bx
+	mov	0x00(%eax),	%bx
 
-// Fetch the high-order two bytes of the LBA start.
-	add	$0x02,		%ax
 // We're done with %ax now, so we'll reusse it.
-	mov	(%eax),		%ax
+	mov	0x02(%eax),	%ax
 
 // Now we'll max out the value at 0x7f.
 
