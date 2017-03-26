@@ -66,8 +66,9 @@
 // contain a bootable partition.
 // uint16_t find_bootable () {
 find_bootable:
-	push	%bp
-	mov	%sp,		%bp
+// There is no need to mess with the stack, this function accepts no arguments.
+//	push	%bp
+//	mov	%sp,		%bp
 
 // Save registers.
 	push	%bx
@@ -106,8 +107,8 @@ find_bootable:
 // Restore registers.
 	pop	%bx
 
-	mov	%bp,		%sp
-	pop	%bp
+//	mov	%bp,		%sp
+//	pop	%bp
 	ret
 // }
 	.size	find_bootable,	.-find_bootable

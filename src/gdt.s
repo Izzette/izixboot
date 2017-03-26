@@ -20,8 +20,9 @@
 // Initialize the GDT
 // void init_gdt () {
 init_gdt:
-	push	%bp
-	mov	%sp,		%bp
+// There is no need to mess with the stack, this function accepts no arguments.
+//	push	%bp
+//	mov	%sp,		%bp
 
 // Copy the GDT prototype.
 	push	$gdtlen
@@ -37,8 +38,8 @@ init_gdt:
 // Load the GDT, doesn't take effect until next ljmp, lcall, or lret
 	lgdt	gdtr
 
-	mov	%bp,		%sp
-	pop	%bp
+//	mov	%bp,		%sp
+//	pop	%bp
 	ret
 // }
 	.size	init_gdt,	.-init_gdt

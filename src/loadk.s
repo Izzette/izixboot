@@ -67,7 +67,8 @@ kexec:
 // There's no coming back from here,
 // so forget about saving the base pointer.
 //	push	%bp
-	mov	%sp,		%bp
+// There is no need to mess with the stack, this function accepts no arguments.
+//	mov	%sp,		%bp
 
 // Load the GDT registry.
 	call	init_gdt
@@ -95,8 +96,9 @@ kexec:
 // Sets the $ENOBOOTABLE errno flag if the DOS partition does not
 // void init_lba_pack () {
 init_lba_pack:
-	push	%bp
-	mov	%sp,		%bp
+// There is no need to mess with the stack, this function accepts no arguments.
+//	push	%bp
+//	mov	%sp,		%bp
 
 // The bootable partition index will be in %ax.
 	call	find_bootable
@@ -122,6 +124,7 @@ init_lba_pack:
 	call	get_lba_safe_len
 // We don't need the partition index any more,
 // so there is no need to restore it.
+	add	$0x2,		%sp
 
 // Put the safe LBA length into the lbapack.
 	mov	%ax,		blkcount
@@ -131,8 +134,8 @@ init_lba_pack:
 	jne	.Linit_lba_pack_fin
 
 .Linit_lba_pack_fin:
-	mov	%bp,		%sp
-	pop	%bp
+//	mov	%bp,		%sp
+//	pop	%bp
 	ret
 // }
 	.size	init_lba_pack,	.-init_lba_pack
