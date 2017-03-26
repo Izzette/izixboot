@@ -29,27 +29,29 @@
 
 // Get DOS partition address.
 // Addess will be left in %ax.
-.macro	getpart	part_index
-// Store %bx.
-	push	%bx
+// %dx will be overwritten by mul, but restoring it can be optionally disabled
+// by setting savedx to $false.
+.macro	getpart	part_index savedx=$true
+.if	$true == \savedx
 	push	%dx
+.endif
 
-// Put part_index in %bx
+// Put part_index in %ax
 	mov	\part_index,	%ax
 
 // Compute the offset from dosstart.
-	mov	$doslen,	%bx
+	mov	$doslen,	%dx
 // High order bits will be stored in %dx,
 // They should however be safe to ignore.
-	mul	%bx
+	mul	%dx
 
 // Add the dosstart address to the offset.
-// %bx now contains the start address of that partition.
+// %ax now contains the start address of that partition.
 	add	$dosstart,	%ax
 
-// Restore %bx.
+.if	$true == \savedx
 	pop	%dx
-	pop	%bx
+.endif
 .endm
 
 .code16
@@ -124,7 +126,10 @@ get_lba_start:
 
 // Get the partition address from the part_index.
 // It will be left in %ax.
-	getpart	0x4(%bp)
+// The second argument to getpart is "savedx", which if set to $false will not save %dx.
+// We do not need to save %dx, because it is not in use by this function, but has already
+// been saved.
+	getpart	0x4(%bp), $false
 
 // Add the offset for the LBA start to the partition address.
 	add	$doslbast,	%ax
