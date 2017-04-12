@@ -16,7 +16,7 @@
 stage2:
 // This function should never return,
 // so forget about saving the base pointer.
-// Thsi will of course change the offset of variables in the stack.
+// This will of course change the offset of variables in the stack.
 //	push	%bp
 	mov	%sp,		%bp
 

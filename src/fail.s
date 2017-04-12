@@ -13,11 +13,7 @@
 // void readerr () {
 readerr:
 	push	$readerrmsg
-	call	puts
-// There is no need to clear the stack, we've given up.
-//	add	$2,		%sp
-// Require manual reboot.
-	jmp	freeze
+	jmp	panic
 // }
 	.size	readerr,	.-readerr
 
@@ -27,11 +23,7 @@ readerr:
 // void baddos () {
 baddos:
 	push	$baddosmsg
-	call	puts
-// There is no need to clear the stack, we've given up.
-//	add	$2,		%sp
-// Require manual reboot.
-	jmp	freeze
+	jmp	panic
 // }
 	.size	baddos,		.-baddos
 
@@ -41,43 +33,57 @@ baddos:
 // void noboot () {
 noboot:
 	push	$nobootmsg
-	call	puts
-// There is no need to clear the stack, we've given up.
-//	add	$2,		%sp
-// Require manual reboot.
-	jmp	freeze
+	jmp	panic
 // }
 	.size	noboot,		.-noboot
 
-	.type	freeze,		@function
-// Halt forever, no matter what.
-// void freeze () {
-freeze:
-// Interupts should already be disabled
-	cli
-	hlt
-	jmp	freeze
+	.globl	nomemmap
+	.type	nomemmap,		@function
+// Display error if there is no memmapable DOS partition.
+// void nomemmap () {
+nomemmap:
+	push	$nomemmapmsg
+	jmp	panic
 // }
-	.size	freeze,		.-freeze
+	.size	nomemmap,		.-noboot
+
+	.type	panic,		@function
+// Halt forever, no matter what.
+// void panic () {
+panic:
+// Splash error.
+	call	puts
+
+.Lpanic_freeze:
+	hlt
+	jmp	.Lpanic_freeze
+// }
+	.size	panic,		.-panic
 
 .section	.rodata
 
 	.type	readerrmsg,	@object
 // Disk failure message.
 readerrmsg:
-	.asciz	"Disk failure!"
+	.asciz	"Disk fail"
 	.size	readerrmsg,	.-readerrmsg
 
 	.type	baddosmsg,	@object
 // Bad DOS table message.
 baddosmsg:
-	.asciz "Bad DOS table!"
+	.asciz "Bad MBRDOS"
 	.size	baddosmsg,	.-baddosmsg
 
 	.type	nobootmsg,	@object
 // Not bootable partition error message.
 nobootmsg:
-	.asciz	"No bootable part!"
+	.asciz	"No bootable"
 	.size	nobootmsg,	.-nobootmsg
+
+	.type	nomemmapmsg,	@object
+// Failed to retrieve memory map
+nomemmapmsg:
+	.asciz	"No memmap"
+	.size	nomemmapmsg,	.-nomemmapmsg
 
 // vim: set ts=8 sw=8 noet syn=asm:

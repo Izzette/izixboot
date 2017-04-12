@@ -92,7 +92,7 @@ load_stage2:
 // 	jmp	.Lload_stage2_readerr
 
 .Lload_stage2_readerr:
-	orw	$EREADERR,	errno
+	movw	$EREADERR,	errno
 //	jmp	.Lload_stage2_fin
 
 .Lload_stage2_fin:

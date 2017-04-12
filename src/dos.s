@@ -74,7 +74,7 @@ find_bootable:
 	push	%bx
 
 // Start at zero.
-	mov	$0x0,		%bx
+	xor	%bx,		%bx
 
 .Lfind_bootable_trypart:
 // Check if the current part_index is bootable
@@ -95,7 +95,7 @@ find_bootable:
 	jl	.Lfind_bootable_trypart
 
 // We could not find a bootable partition, error.
-	orw	$ENOBOOTABLE,	errno
+	movw	$ENOBOOTABLE,	errno
 	jmp	.Lfind_bootable_fin
 
 .Lfind_bootable_ret:
@@ -132,27 +132,23 @@ get_lba_start:
 // been saved.
 	getpart	0x4(%bp), $false
 
-// Add the offset for the LBA start to the partition address.
-	add	$doslbast,	%ax
-
 // LBA start address of the partition is not 4-byte aligned,
 // so we need to do it in two steps.  This also keeps compatibility,
 // with 16-bit only CPUs, not that it matters.
 
 // Fetch the low-order two bytes from the LBA start.
-	mov	(%eax),		%bx
+	mov	doslbast(%eax),	%bx
 
 // Fetch the high-order two bytes of the LBA start.
-	add	$0x02,		%ax
 // We're done with %ax now, so we'll reusse it.
-	mov	(%eax),		%ax
+	mov	doslbast+0x02(%eax), %ax
 
-// Get the address off our high order bits.
+// Get the address of our high order bits.
 	mov	0x6(%bp),	%dx
 // Move the high order bits to our lbapack.
 	mov	%ax,		(%edx)
 
-// Get the address off our low order bits.
+// Get the address of our low order bits.
 	mov	0x8(%bp),	%dx
 // Move the low order bits to our lbapack
 	mov	%bx,		(%edx)
@@ -182,14 +178,11 @@ get_lba_safe_len:
 // It will be left in %ax.
 	getpart	0x4(%bp)
 
-// Add the offset for the LBA start to the partition address.
-	add	$doslbalen,	%ax
-
 // Fetch the low-order two bytes from the LBA length.
-	mov	0x00(%eax),	%bx
+	mov	doslbalen(%eax), %bx
 
-// We're done with %ax now, so we'll reusse it.
-	mov	0x02(%eax),	%ax
+// We're done with %ax now, so we'll reuse it.
+	mov	doslbalen+0x02(%eax), %ax
 
 // Now we'll max out the value at 0x7f.
 
@@ -235,12 +228,8 @@ is_bootable:
 // It will be left in %ax.
 	getpart	0x4(%bp)
 
-// Start address of bootable flag.
-// Should be zero, so omit.
-//	add	$dosboot,	%ax
-
 // Move the bootable flag to %al.
-	mov	(%eax),		%bl
+	mov	dosboot(%eax),	%bl
 
 // Is it bootable.
 	cmp	$dosbootflag,	%bl
@@ -251,15 +240,16 @@ is_bootable:
 	je	.Lis_bootable_no
 
 // Otherwise it's invalid, so fail.
-	orw	$EINVALDOS,	errno
+	movw	$EINVALDOS,	errno
+// The return value doesn't matter, becuase we've set errno.
+//	jmp	.Lis_bootable_fin
+
+.Lis_bootable_no:
+	mov	$false,		%ax
 	jmp	.Lis_bootable_fin
 
 .Lis_bootable_yes:
 	mov	$true,		%ax
-	jmp	.Lis_bootable_fin
-
-.Lis_bootable_no:
-	mov	$false,		%ax
 //	jmp	.Lis_bootable_fin
 
 .Lis_bootable_fin:
