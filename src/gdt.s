@@ -33,7 +33,7 @@ init_gdt:
 
 // Create the descriptor registry.
 	movw	$gdtlen-1,	gdtr
-	movl	$gdt,		gdtr+2
+	movl	$gdt,		gdtr+0x02
 
 // Load the GDT, doesn't take effect until next ljmp, lcall, or lret
 	lgdt	gdtr

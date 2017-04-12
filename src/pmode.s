@@ -27,8 +27,8 @@
 // void pmode () {
 pmode:
 // Setup our protected mode stack.
-	mov	$pmodestack,	%bp
-	mov	%bp,		%sp
+	mov	$pmodestack,	%ebp
+	mov	%ebp,		%esp
 
 // Set all segment registers for our GDTs data segment.
 	mov	$dataseg,	%ax

@@ -45,7 +45,7 @@ load_kernel:
 // 	jmp	.Lload_kernel_readerr
 
 .Lload_kernel_readerr:
-	orw	$EREADERR,	errno
+	movw	$EREADERR,	errno
 //	jmp	.Lload_kernel_fin
 
 .Lload_kernel_fin:
@@ -129,9 +129,9 @@ init_lba_pack:
 // Put the safe LBA length into the lbapack.
 	mov	%ax,		blkcount
 
-// If an error occurred ret real quick.
-	cmpw	$ENOERR,	errno
-	jne	.Linit_lba_pack_fin
+// If an error occurred our caller will handle it.
+//	cmpw	$ENOERR,	errno
+//	jne	.Linit_lba_pack_fin
 
 .Linit_lba_pack_fin:
 //	mov	%bp,		%sp
