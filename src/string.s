@@ -5,7 +5,7 @@
 
 .code16
 
-.section	.text
+.section	.globals
 
 	.globl	memcpy
 	.type	memcpy,		@function

@@ -8,6 +8,8 @@
 
 .code16
 
+.section	.stage1
+
 	.globl	stage1
 	.type	stage1,		@function
 // The stage1 bootloader whose job is to load and execute stage 2.

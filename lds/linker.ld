@@ -62,19 +62,40 @@ SECTIONS
     .text BLOCK(1k) : ALIGN(1k)
     {
         /**
-         * We're going to fill unused space with zeros, becuase they are easier to spot.
+         * We're going to fill unused space with zeros, because they are easier to spot.
          */
         FILL(0x00);
 
         /**
          * Our stage one boot-loader will be packed in with
-         * our data and our 32-bit protected mode code.
+         * our data, our 32-bit protected mode code, and our shared functions.
          * This is just to help balance space for our stage two boot-loader.
-         * The only thing in .text is global functions, including _start.
          */
-        *(.text)
-        *(.stage1)
+
+        /**
+         * Ensure _start is at the very start of the executable.
+         */
+        *(.start)
+
+        /**
+         * Our protected mode code needs to be as early in the executable as possible, so it won't be overwritten by the kernel arguments on the stack.
+         */
         *(.pmode)
+
+        /**
+         * The stage one boot loader which loads .stage2.
+         */
+        *(.stage1)
+
+        /**
+         * The .globals sections contains functions that are used by
+         * both .stage1 and .stage2.
+         */
+        *(.globals)
+
+        /**
+         * All our mutable and immutable data.
+         */
         *(.data)
         *(.rodata)
 
@@ -105,7 +126,7 @@ SECTIONS
         SHORT(0x0002)
         /* Starting LBA (0-indexed). */
         LONG(0x00000001)
-        /* Sectors in parition. */
+        /* Sectors in partition. */
         LONG(0x00000001)
 
         /* Remaining partitions, empty, for good measure. */
@@ -127,7 +148,7 @@ SECTIONS
 
         /**
          * This will create an error if we cannot fit our stage 2 boot-loader in LBA 1.
-         * It is also important that our boot-loader can fit before 0x8000, beccause
+         * It is also important that our boot-loader can fit before 0x8000, because
          * we will be loading our kernel at that address.
          * NOTE: watch out for "cannot move location counter backwards (from ... to 0..08000)".
          */

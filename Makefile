@@ -26,7 +26,7 @@ include $(wildcard src/*.d)
 
 boot.elf: lds/linker.ld $(bootobjects)
 	$(CC) $(CFLAGS) -m16 -Wl,-Tlds/linker.ld \
-		src/start.o $(filter-out src/start.o,$(bootobjects)) \
+		$(bootobjects) \
 		-o boot.elf
 
 boot: boot.elf

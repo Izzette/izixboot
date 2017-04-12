@@ -5,7 +5,7 @@
 
 .code16
 
-.section	.text
+.section	.globals
 
 	.globl	reset_drive
 	.type	reset_drive,	@function

@@ -8,7 +8,7 @@
 
 .code16
 
-.section	.text
+.section	.start
 
 	.globl	_start
 	.type	_start,		@function

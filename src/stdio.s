@@ -5,7 +5,7 @@
 
 .code16
 
-.section	.text
+.section	.globals
 
 	.globl	puts
 	.type	puts,		@function
