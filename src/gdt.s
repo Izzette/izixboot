@@ -9,7 +9,7 @@
 	.set	gdtr,		heapstart
 // The GDT.  The GDT registry is only 6 bytes long,
 // but lets just make sure it's aligned to 4.
-	.set	gdt,		heapstart+8
+	.set	gdt,		heapstart+0x08
 
 .code16
 

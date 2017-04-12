@@ -2,8 +2,12 @@
 // Load and execute the kernel.
 
 .include	"errno.s"
+.include	"heap.s"
 
 .file		"loadk.s"
+
+// The memory map will start after the gdt.
+	.set	memmap,		heapstart+0x20
 
 .code16
 
@@ -70,19 +74,33 @@ kexec:
 // There is no need to mess with the stack, this function accepts no arguments.
 //	mov	%sp,		%bp
 
+//	push	%bx
+
 // Load the GDT registry.
 	call	init_gdt
 
+// Create the memory map.
+	pushw	$memmap
+	call	get_memmap
+	add	$0x02,		%sp
+
+// If an error occured, we failed to get a memory map.
+	cmpw	$ENOERR,	errno
+	jne	nomemmap
+
 // set PE (Protection Enable) bit in CR0 (Control Register 0)
-	mov	%cr0,		%eax
-	or	$1,		%eax
-	mov	%eax,		%cr0
+	mov	%cr0,		%ebx
+	or	$1,		%ebx
+	mov	%ebx,		%cr0
 
-// Jump to 32-bit protected mode code
-	ljmp	$0x08,		$pmode
-
+// Call the to 32-bit protected mode code
+	push	%ax
+	pushw	$memmap
+	lcall	$0x08,		$pmode
 // This function should never return,
 // so forget about restoring the stack and base pointers.
+//	add	$0x04,		%sp
+
 //	mov	%bp,		%sp
 //	pop	%bp
 //	ret
