@@ -12,9 +12,16 @@ objects16 := $(addprefix src/,$(objects16))
 objects32 := pmode.o
 objects32 := $(addprefix src/,$(objects32))
 
+objects_debug := memmap.o
+objects_debug := $(addprefix debug/,$(objects_debug))
+
 bootobjects := $(objects16) $(objects32)
 
 all: boot
+debug: $(objects_debug)
+
+$(objects_debug):%.o:%.c
+	$(CC) $(CFLAGS) -I./include -m32 -c $< -o $@
 
 $(objects16):%.o:%.s
 	$(CC) $(CFLAGS) -Wa,-I./src -m16 -c $< -o $@
@@ -23,6 +30,7 @@ $(objects32):%.o:%.s
 	$(CC) $(CFLAGS) -Wa,-I./src -m32 -c $< -o $@
 
 include $(wildcard src/*.d)
+include $(wildcard debug/*.d)
 
 boot.elf: lds/linker.ld $(bootobjects)
 	$(CC) $(CFLAGS) -m16 -Wl,-Tlds/linker.ld \
@@ -32,10 +40,13 @@ boot.elf: lds/linker.ld $(bootobjects)
 boot: boot.elf
 	objcopy -j .text -O binary boot.elf boot
 
-clean: clean_src clean_boot_elf clean_boot
+clean: clean_src clean_debug clean_boot_elf clean_boot
 
 clean_src:
 	rm -f src/*.o
+
+clean_debug:
+	rm -f debug/*.o
 
 clean_boot_elf:
 	rm -f boot.elf
