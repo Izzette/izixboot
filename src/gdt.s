@@ -9,7 +9,7 @@
 	.set	gdtr,		heapstart
 // The GDT.  The GDT registry is only 6 bytes long,
 // but lets just make sure it's aligned to 4.
-	.set	gdt,		heapstart+8
+	.set	gdt,		heapstart+0x08
 
 .code16
 
@@ -33,7 +33,7 @@ init_gdt:
 
 // Create the descriptor registry.
 	movw	$gdtlen-1,	gdtr
-	movl	$gdt,		gdtr+2
+	movl	$gdt,		gdtr+0x02
 
 // Load the GDT, doesn't take effect until next ljmp, lcall, or lret
 	lgdt	gdtr

@@ -2,8 +2,12 @@
 // Load and execute the kernel.
 
 .include	"errno.s"
+.include	"heap.s"
 
 .file		"loadk.s"
+
+// The memory map will start after the GDT.
+	.set	memmap,		heapstart+0x20
 
 .code16
 
@@ -45,7 +49,7 @@ load_kernel:
 // 	jmp	.Lload_kernel_readerr
 
 .Lload_kernel_readerr:
-	orw	$EREADERR,	errno
+	movw	$EREADERR,	errno
 //	jmp	.Lload_kernel_fin
 
 .Lload_kernel_fin:
@@ -70,19 +74,33 @@ kexec:
 // There is no need to mess with the stack, this function accepts no arguments.
 //	mov	%sp,		%bp
 
+//	push	%bx
+
 // Load the GDT registry.
 	call	init_gdt
 
+// Create the memory map.  The number of entries is in %ax.
+	pushw	$memmap
+	call	get_memmap
+	add	$0x02,		%sp
+
+// If an error occurred, we failed to get a memory map.
+	cmpw	$ENOERR,	errno
+	jne	nomemmap
+
 // set PE (Protection Enable) bit in CR0 (Control Register 0)
-	mov	%cr0,		%eax
-	or	$1,		%eax
-	mov	%eax,		%cr0
+	mov	%cr0,		%ebx
+	or	$1,		%ebx
+	mov	%ebx,		%cr0
 
-// Jump to 32-bit protected mode code
-	ljmp	$0x08,		$pmode
-
+// Call the to 32-bit protected mode code
+	push	%ax
+	pushw	$memmap
+	lcall	$0x08,		$pmode
 // This function should never return,
 // so forget about restoring the stack and base pointers.
+//	add	$0x04,		%sp
+
 //	mov	%bp,		%sp
 //	pop	%bp
 //	ret
@@ -91,7 +109,7 @@ kexec:
 
 	.globl	init_lba_pack
 	.type	init_lba_pack,	@function
-// Intialize the lbapack.
+// Initialize the lbapack.
 // Sets the $EINVALDOS errno flag if the DOS partition is invalid.
 // Sets the $ENOBOOTABLE errno flag if the DOS partition does not
 // void init_lba_pack () {
@@ -129,9 +147,9 @@ init_lba_pack:
 // Put the safe LBA length into the lbapack.
 	mov	%ax,		blkcount
 
-// If an error occurred ret real quick.
-	cmpw	$ENOERR,	errno
-	jne	.Linit_lba_pack_fin
+// If an error occurred our caller will handle it.
+//	cmpw	$ENOERR,	errno
+//	jne	.Linit_lba_pack_fin
 
 .Linit_lba_pack_fin:
 //	mov	%bp,		%sp
@@ -160,7 +178,7 @@ lbapackheader:
 
 	.type	blkcount,	@object
 	.size	blkcount,	0x2
-// Number of sectors to read.  Some bios only support 127,
+// Number of sectors to read.  Some BIOS only support 127,
 // so we will max out there.
 blkcount:
 	.word	0x0000
@@ -168,18 +186,18 @@ blkcount:
 	.type	kernelstart,	@object
 	.size	kernelstart,	0x4
 // Bootloader start (16-bit segment:16-bit offset).
-// This we will treat as readonly.
+// This we will treat as read-only.
 kernelstart:
 // Transfer buffer offset.
 	.word	0x0000
-// Transfer buffer segement.
+// Transfer buffer segment.
 	.word	0x0800
 // END kernelstart
 
 	.type	blkstart,	@object
 	.size	blkstart,	0x8
-// Start LBA (0 indexed!).  This is the start that the bootloader partion must be at.
-// This is also the first valid LBA for a GPT paritions.
+// Start LBA (0 indexed!).  This is the start that the bootloader partition must be at.
+// This is also the first valid LBA for a GPT partitions.
 blkstart:
 
 	.type	blkstartlow,	@object
