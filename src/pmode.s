@@ -53,7 +53,7 @@ pmode:
 
 // This is the start address of our memory map entries.
 	mov	0x4(%ebp),	%ax
-// This is the exclusive end address of our memory map entries.
+// This is the number of our memory map entries.
 	mov	0x6(%ebp),	%bx
 
 // Setup our protected mode stack.

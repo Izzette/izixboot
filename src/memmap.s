@@ -11,6 +11,8 @@
 	.set	acpi3x_xattrs,	0x000000001
 	.set	smap,		0x0534D4150
 
+	.set	sizeof_entry,	0x18
+
 .code16
 
 .section	.stage2
@@ -20,13 +22,15 @@
 // Use the INT 0x15, eax=0xE820 BIOS function to get a memory map.
 // Place it into entry_dest, and fake ACPI 3.x format even if it's not supported.
 // See include/izixboot/memmap.h for a definition of e820_3x_entry_t.
-// Returns the exclusive maximum address of of the e820_3x_entry_t entries.
+// Returns the number of entries.
 // short get_memmap (e820_3x_entry_t *entry_dest) {
 get_memmap:
 	push	%bp
 	mov	%sp,		%bp
 
 // Store registers.
+	push	%bx
+	push	%dx
 	push	%di
 
 // First argument is the location of the memmap array.
@@ -66,7 +70,7 @@ get_memmap:
 
 .Lmemmap_inc:
 // Increment our entry pointer.
-	add	$0x18,		%di
+	add	$sizeof_entry,	%di
 
 // If ebx is back to zero, we've reached the end of the list.
 	or	%eax,		%eax
@@ -84,8 +88,16 @@ get_memmap:
 // Set the entry length as the return value.
 	mov	%di,		%ax
 
+// Compute number of entries.
+	sub	0x4(%bp),	%ax
+	xor	%dx,		%dx
+	mov	$sizeof_entry,	%bx
+	div	%bx
+
 // Restore registers.
 	pop	%di
+	pop	%dx
+	pop	%bx
 
 	mov	%bp,		%sp
 	pop	%bp
@@ -122,7 +134,7 @@ e820:
 	movl	$acpi3x_xattrs,	acpi3x_start(%di)
 
 // ask for 24 bytes
-	movl	$0x18,		%ecx
+	movl	$sizeof_entry,	%ecx
 
 // Make BIOS function call.
 	movl	$0xe820,	%eax

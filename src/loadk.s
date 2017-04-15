@@ -6,7 +6,7 @@
 
 .file		"loadk.s"
 
-// The memory map will start after the gdt.
+// The memory map will start after the GDT.
 	.set	memmap,		heapstart+0x20
 
 .code16
@@ -79,12 +79,12 @@ kexec:
 // Load the GDT registry.
 	call	init_gdt
 
-// Create the memory map.
+// Create the memory map.  The number of entries is in %ax.
 	pushw	$memmap
 	call	get_memmap
 	add	$0x02,		%sp
 
-// If an error occured, we failed to get a memory map.
+// If an error occurred, we failed to get a memory map.
 	cmpw	$ENOERR,	errno
 	jne	nomemmap
 
@@ -109,7 +109,7 @@ kexec:
 
 	.globl	init_lba_pack
 	.type	init_lba_pack,	@function
-// Intialize the lbapack.
+// Initialize the lbapack.
 // Sets the $EINVALDOS errno flag if the DOS partition is invalid.
 // Sets the $ENOBOOTABLE errno flag if the DOS partition does not
 // void init_lba_pack () {
@@ -178,7 +178,7 @@ lbapackheader:
 
 	.type	blkcount,	@object
 	.size	blkcount,	0x2
-// Number of sectors to read.  Some bios only support 127,
+// Number of sectors to read.  Some BIOS only support 127,
 // so we will max out there.
 blkcount:
 	.word	0x0000
@@ -186,18 +186,18 @@ blkcount:
 	.type	kernelstart,	@object
 	.size	kernelstart,	0x4
 // Bootloader start (16-bit segment:16-bit offset).
-// This we will treat as readonly.
+// This we will treat as read-only.
 kernelstart:
 // Transfer buffer offset.
 	.word	0x0000
-// Transfer buffer segement.
+// Transfer buffer segment.
 	.word	0x0800
 // END kernelstart
 
 	.type	blkstart,	@object
 	.size	blkstart,	0x8
-// Start LBA (0 indexed!).  This is the start that the bootloader partion must be at.
-// This is also the first valid LBA for a GPT paritions.
+// Start LBA (0 indexed!).  This is the start that the bootloader partition must be at.
+// This is also the first valid LBA for a GPT partitions.
 blkstart:
 
 	.type	blkstartlow,	@object
