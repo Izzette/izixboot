@@ -27,14 +27,14 @@
 // void pmode (short entry_count, e820_3x_entry_t *memmap_entries[]) {
 pmode:
 // This function will not be returning,
-// so forget about saving the base pointer or other registers.
+// so forget about saving the base pointer or other registers,
+// this will of course change the location of argmuments on the stack.
 //	push	%ebp
-// This function was called from 16-bit mode, so let's make sure the upper
-// half of our base and stack pointers are clean.
+// This function was far-called from 16-bit mode, so let's make sure the upper
+// half of our base and stack pointers are clean.  We can from here on out pretend
+// that this code was short called from 32-bit code.
 	and	$0x0000ffff,	%esp
-	mov	%esp,		%ebp
-
-//	push	%ebx
+//	mov	%esp,		%ebp
 
 // Set all segment registers for our GDTs data segment.
 	mov	$dataseg,	%ax
@@ -44,31 +44,21 @@ pmode:
 	mov	%ax,		%gs
 	mov	%ax,		%ss
 
-// This function was called from 16-bit mode,
-// so the address on the stack is only two bytes long.
-// Our parameters are 16-bit addresses,
-// so we'll need to clean out the upper bits of these registers.
-	xor	%eax,		%eax
-	mov	%eax,		%ebx
-
-// This is the start address of our memory map entries.
-	mov	0x4(%ebp),	%ax
-// This is the number of our memory map entries.
-	mov	0x6(%ebp),	%bx
+// Save our old "base" pointer containing our parameters in %eax.
+	mov	%esp,		%eax
 
 // Setup our protected mode stack.
 	mov	$pmodestack,	%ebp
 	mov	%ebp,		%esp
 
 // Far call to our kernels entry point.
-	pushl	%ebx
-	pushl	%eax
+	pushl	0x0c(%eax)
+	pushl	0x08(%eax)
+	pushl	0x04(%eax)
 	lcall	$codeseg,	$kentryoffset
 // This function should never return,
 // so forget about restoring the registers.
-//	add	$0x8,		%esp
-
-//	pop	%ebx
+//	add	$0x12,		%esp
 
 //	mov	%bp,		%sp
 //	pop	%bp

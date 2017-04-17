@@ -6,8 +6,16 @@
 
 .file		"loadk.s"
 
+// The GDT registry.
+	.set	gdtr,		heapstart
+
+// The GDT registry is only 6 bytes long,
+// but lets just make sure it's aligned to 4.
+	.set	gdt,		gdtr+0x08
+
+// The GDT which will be 3 entries long so 24 (0x18) bytes.
 // The memory map will start after the GDT.
-	.set	memmap,		heapstart+0x20
+	.set	memmap,		gdt+0x18
 
 .code16
 
@@ -77,7 +85,10 @@ kexec:
 //	push	%bx
 
 // Load the GDT registry.
+	pushw	$gdt
+	pushw	$gdtr
 	call	init_gdt
+	add	$0x04,		%sp
 
 // Create the memory map.  The number of entries is in %ax.
 	pushw	$memmap
@@ -93,13 +104,18 @@ kexec:
 	or	$1,		%ebx
 	mov	%ebx,		%cr0
 
+// We will be calling a 32-bit protected mode function,
+// so lets make sure the stack and it's arguments
+// look like they were called from 32-bit code.
+	and	$0x0000ffff,	%eax
 // Call the to 32-bit protected mode code
-	push	%ax
-	pushw	$memmap
+	pushl	$gdtr
+	pushl	%eax
+	pushl	$memmap
 	lcall	$0x08,		$pmode
 // This function should never return,
 // so forget about restoring the stack and base pointers.
-//	add	$0x04,		%sp
+//	add	$0x06,		%sp
 
 //	mov	%bp,		%sp
 //	pop	%bp

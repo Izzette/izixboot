@@ -16,6 +16,12 @@ This will create `boot.elf` and `boot`.
 * GNU Make >=4.x-ish.
 * You will need a relatively recent >=4.x-ish GCC and >=2.x-ish binutils which can emit x86 code.
   Ensure that it's the first `gcc`, `ld`, and `as` in your path.
+### Options:
+* You can generate additional debugging objects by running `make debug`.
+* You can run sanity checks by running `make test`.
+* You can complete all targets including `all`, `debug`, and `test` by running `make extra`.
+* You can specify the compiler to use for the target by specifying `CC=your-cc` and the compiler for the host by specifying `HOSTCC=your-host-cc` on the command line, don't forget to set `PATH` to include the subprograms you will need for your compilers.
+* In order to use two different compilers you may need to specify the compiler subprogram path.  Set the `COMPILER_PATH` environment variable for the target and `HOST_COMPILER_PATH` for the host.
 
 ## Installing:
 ### Installing the boot-loader:
@@ -31,8 +37,9 @@ That's it, you're good to go!
 * If your kernel is not smaller than 63.5 KiB, it will not be loaded in entirety.
 * If your kernel does not use `0x9000` as the entry point at a 4 KiB offset from the start of the executable, it will not execute correctly.
 * Two arguments will be passed to your kernel:
-  * The first a `uint32_t` representing the number of `e820_3x_entry_t` memory map entries (see include/izixboot/memmap.h for a definition).  You should cast this value to a `size_t` or equivalent as soon as is convenient.
+  * The first a `uint32_t` representing the number of `e820_3x_entry_t` memory map entries (see `include/izixboot/memmap.h` for a definition).  You should cast this value to a `size_t` or equivalent as soon as is convenient.
   * The second a `uint32_t` representing the start address of an array of `e820_3x_entry_t` memory map entries.  You should cast this value to a `e820_3x_entry_t *` as soon as is convenient.
+* Definitions for the IA32 GDT entries and routines for encoding them are available in `include/izixboot/gdt.h` and `include/izixboot/gdt32.h`.
 * The stack will be initialized starting at `0x8000`, but you might want to reinitialize it with something more appropriate for your kernel.
 * The GDTr will be located at `0x500`, with only definitions for a privileged code segment and a data segment both `0x0000000-0xffffffff`.  You should probably reinitialize the GDT with something more sane that's not likely to be overwritten by your stack.
 * Paging will not be enabled, neither will any TSSs, the IDT, or anything else fancy like that.
