@@ -229,6 +229,10 @@ static inline void gdt_access_decode (
 		((access & (0b1  << GDT_ACCESS_PR_OFFSET)) ? true : false);
 }
 
+static inline bool gdt_access_validate (const gdt_access_t access) {
+	return ((access & (0b1 << GDT_ACCESS_AM_LENGTH)) ? true : false);
+}
+
 #endif
 
 // vim: set ts=4 sw=4 noet syn=c:

@@ -83,7 +83,10 @@ static inline void gdt32_flags_decode (
 		((flags & (0b1 << GDT_FLAGS_GR_OFFSET)) ? true : false);
 }
 
-static inline void gdt32_decode (const gdt32_entry_t entry, gdt32_logical_entry_t *logical_entry) {
+static inline void gdt32_decode (
+		const gdt32_entry_t entry,
+		gdt32_logical_entry_t *logical_entry
+) {
 	gdt_logical_access_t  logical_access;
 	gdt32_logical_flags_t logical_flags;
 
@@ -98,6 +101,16 @@ static inline void gdt32_decode (const gdt32_entry_t entry, gdt32_logical_entry_
 		((entry & GDT_BASE_HIGH_DEMASK)  >> (GDT_BASE_HIGH_OFFSET - GDT_BASE_LOW_LENGTH)));
 	logical_entry->access = logical_access;
 	logical_entry->flags  = logical_flags;
+}
+
+static inline bool gdt32_flags_validate (const gdt32_flags_t flags) {
+	return ((flags & (0b11 << GDT32_FLAGS_FM_OFFSET)) ? false : true);
+}
+
+static inline bool gdt32_validate (const gdt32_entry_t entry) {
+	return (
+		gdt_access_validate ((entry & GDT_ACCESS_DEMASK) >> GDT_ACCESS_OFFSET) &&
+		gdt32_flags_validate ((entry & GDT_FLAGS_DEMASK) >> GDT_FLAGS_OFFSET));
 }
 
 #endif

@@ -10,6 +10,9 @@ static const gdt32_entry_t data_entry = 0x00cf92000000ffffL;
 int main () {
 	gdt32_logical_entry_t code_logical_entry, data_logical_entry;
 
+	gdt32_validate (code_entry);
+	gdt32_validate (data_entry);
+
 	gdt32_decode (code_entry, &code_logical_entry);
 	gdt32_decode (data_entry, &data_logical_entry);
 
