@@ -55,13 +55,27 @@
 
 // Bitmasks for converting from logical values.
 #define GDT_LIMIT_LOW_BITMASK \
-	((0x00000001 << GDT_LIMIT_LOW_LENGTH)   - 1)
+	(((0x00000001 << GDT_LIMIT_LOW_LENGTH)  - 1))
 #define GDT_LIMIT_HIGH_BITMASK \
 	(((0x00000001 << GDT_LIMIT_HIGH_LENGTH) - 1) << GDT_LIMIT_LOW_LENGTH)
 #define GDT_BASE_LOW_BITMASK \
-	((0x00000001 << GDT_BASE_LOW_LENGTH)    - 1)
+	(((0x00000001 << GDT_BASE_LOW_LENGTH)   - 1))
 #define GDT_BASE_HIGH_BITMASK \
 	(((0x00000001 << GDT_BASE_HIGH_LENGTH)  - 1) << GDT_BASE_LOW_LENGTH)
+
+// Bitmasks for converting to logical values.
+#define GDT_LIMIT_LOW_DEMASK \
+	(((0x00000001L << GDT_LIMIT_LOW_LENGTH)  - 1) << GDT_LIMIT_LOW_OFFSET)
+#define GDT_LIMIT_HIGH_DEMASK \
+	(((0x00000001L << GDT_LIMIT_HIGH_LENGTH) - 1) << GDT_LIMIT_HIGH_OFFSET)
+#define GDT_BASE_LOW_DEMASK \
+	(((0x00000001L << GDT_BASE_LOW_LENGTH)   - 1) << GDT_BASE_LOW_OFFSET)
+#define GDT_BASE_HIGH_DEMASK \
+	(((0x00000001L << GDT_BASE_HIGH_LENGTH)  - 1) << GDT_BASE_HIGH_OFFSET)
+#define GDT_ACCESS_DEMASK \
+	(((0x00000001L << GDT_ACCESS_LENGTH)     - 1) << GDT_ACCESS_OFFSET)
+#define GDT_FLAGS_DEMASK \
+	(((0x00000001L << GDT_FLAGS_LENGTH)      - 1) << GDT_FLAGS_OFFSET)
 
 /* Access Byte Legend:
  * AC = Accessed bit.
@@ -182,7 +196,8 @@ typedef struct gdt_logical_access {
 // Real entry type.
 typedef uint8_t gdt_access_t;
 
-// Inline function to generate real valid entries.
+// Inline functions to generate real valid entries.
+
 static inline gdt_access_t gdt_access_encode (const gdt_logical_access_t logical_access) {
 	gdt_access_t access =
 		((logical_access.accessed             ? 0b1 : 0b0) << GDT_ACCESS_AC_OFFSET) |
@@ -194,6 +209,24 @@ static inline gdt_access_t gdt_access_encode (const gdt_logical_access_t logical
 		((logical_access.present              ? 0b1 : 0b0) << GDT_ACCESS_PR_OFFSET);
 
 	return access;
+}
+
+static inline void gdt_access_decode (
+		const gdt_access_t access,
+		gdt_logical_access_t *logical_access
+) {
+	logical_access->accessed             =
+		((access & (0b1  << GDT_ACCESS_AC_OFFSET)) ? true : false);
+	logical_access->read_write           =
+		((access & (0b1  << GDT_ACCESS_RW_OFFSET)) ? true : false);
+	logical_access->direction_conforming =
+		((access & (0b1  << GDT_ACCESS_DC_OFFSET)) ? true : false);
+	logical_access->executable           =
+		((access & (0b1  << GDT_ACCESS_EX_OFFSET)) ? true : false);
+	logical_access->priviledge           =
+		((access & (0b11 << GDT_ACCESS_PV_OFFSET)) >> GDT_ACCESS_PV_OFFSET);
+	logical_access->present              =
+		((access & (0b1  << GDT_ACCESS_PR_OFFSET)) ? true : false);
 }
 
 #endif

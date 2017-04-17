@@ -59,12 +59,10 @@ static inline gdt32_flags_t gdt32_flags_encode (const gdt32_logical_flags_t logi
 }
 
 static inline gdt32_entry_t gdt32_encode (const gdt32_logical_entry_t logical_entry) {
-	gdt32_entry_t entry;
-
 	gdt_access_t  access = gdt_access_encode (logical_entry.access);
 	gdt32_flags_t flags  = gdt32_flags_encode (logical_entry.flags);
 
-	entry =
+	gdt32_entry_t entry =
 		(((gdt32_entry_t)(logical_entry.limit  & GDT_LIMIT_LOW_BITMASK))  << (GDT_LIMIT_LOW_OFFSET))                         |
 		(((gdt32_entry_t)(logical_entry.base   & GDT_BASE_LOW_BITMASK))   << (GDT_BASE_LOW_OFFSET))                          |
 		(((gdt32_entry_t)(access))                                        << (GDT_ACCESS_OFFSET))                            |
@@ -73,6 +71,33 @@ static inline gdt32_entry_t gdt32_encode (const gdt32_logical_entry_t logical_en
 		(((gdt32_entry_t)(logical_entry.base   & GDT_BASE_HIGH_BITMASK))  << (GDT_BASE_HIGH_OFFSET - GDT_LIMIT_LOW_LENGTH));
 
 	return entry;
+}
+
+static inline void gdt32_flags_decode (
+		const gdt32_flags_t flags,
+		gdt32_logical_flags_t *logical_flags
+) {
+	logical_flags->size        =
+		((flags & (0b1 << GDT_FLAGS_SZ_OFFSET)) ? true : false);
+	logical_flags->granularity =
+		((flags & (0b1 << GDT_FLAGS_GR_OFFSET)) ? true : false);
+}
+
+static inline void gdt32_decode (const gdt32_entry_t entry, gdt32_logical_entry_t *logical_entry) {
+	gdt_logical_access_t  logical_access;
+	gdt32_logical_flags_t logical_flags;
+
+	gdt_access_decode ((entry & GDT_ACCESS_DEMASK) >> GDT_ACCESS_OFFSET, &logical_access);
+	gdt32_flags_decode ((entry & GDT_FLAGS_DEMASK) >> GDT_FLAGS_OFFSET, &logical_flags);
+
+	logical_entry->limit  = (
+		((entry & GDT_LIMIT_LOW_DEMASK)  >> (GDT_LIMIT_LOW_OFFSET)) |
+		((entry & GDT_LIMIT_HIGH_DEMASK) >> (GDT_LIMIT_HIGH_OFFSET - GDT_LIMIT_LOW_LENGTH)));
+	logical_entry->base   = (
+		((entry & GDT_BASE_LOW_DEMASK)   >> (GDT_BASE_LOW_OFFSET))  |
+		((entry & GDT_BASE_HIGH_DEMASK)  >> (GDT_BASE_HIGH_OFFSET - GDT_BASE_LOW_LENGTH)));
+	logical_entry->access = logical_access;
+	logical_entry->flags  = logical_flags;
 }
 
 #endif

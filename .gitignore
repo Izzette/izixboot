@@ -3,4 +3,5 @@ boot.elf
 *.o
 _hd*
 build/generate_gdtproto
+test/gdt_recode
 generated

@@ -29,8 +29,24 @@ objects_debug := $(addprefix debug/,$(objects_debug))
 
 bootobjects := $(objects16) $(objects32)
 
+exec_build := generate_gdtproto
+exec_build := $(addprefix build/,$(exec_build))
+
+exec_test := gdt_recode
+run_test := $(addprefix test_,$(exec_test))
+exec_test := $(addprefix test/,$(exec_test))
+
+include $(wildcard src/*.d)
+include $(wildcard debug/*.d)
+include $(wildcard build/*.d)
+include $(wildcard test/*.d)
+
 all: boot
+extra: prepare all debug test
+prepare: generated/gdtproto.s
 debug: $(objects_debug)
+test: $(run_test)
+clean: clean_build clean_generated clean_src clean_debug clean_boot_elf clean_boot clean_test
 
 $(objects_debug):%.o:%.c
 	$(HOSTCC) $(DEBUG_CFLAGS) -I./include -m32 -c $< -o $@
@@ -41,10 +57,6 @@ $(objects16):%.o:%.s
 $(objects32):%.o:%.s
 	$(CC) $(CFLAGS) -m32 -c $< -o $@
 
-include $(wildcard src/*.d)
-include $(wildcard debug/*.d)
-include $(wildcard build/*.d)
-
 boot.elf: lds/linker.ld $(bootobjects)
 	$(CC) $(CFLAGS) -m16 -Wl,-Tlds/linker.ld \
 		$(bootobjects) \
@@ -53,13 +65,8 @@ boot.elf: lds/linker.ld $(bootobjects)
 boot: boot.elf
 	objcopy -j .text -O binary boot.elf boot
 
-prepare: build/generate_gdtproto
-
-build/generate_gdtproto.o:%.o:%.c
-	$(HOSTCC) $(HOST_CFLAGS) -I./include -c $< -o $@
-
-build/generate_gdtproto:%:%.o
-	$(HOSTCC) $(HOST_CFLAGS) $< -o $@
+$(exec_build):%:%.c
+	$(HOSTCC) $(HOST_CFLAGS) -I./include $< -o $@
 
 generated:
 	mkdir -p generated
@@ -67,13 +74,14 @@ generated:
 generated/gdtproto.s: generated build/generate_gdtproto
 	./build/generate_gdtproto > generated/gdtproto.s
 
-clean: clean_build clean_generate_gdtproto clean_generated clean_src clean_debug clean_boot_elf clean_boot
+$(exec_test):%:%.c
+	$(HOSTCC) $(HOST_CFLAGS) -I./include $< -o $@
+
+$(run_test):test_%:test/%
+	./$<
 
 clean_build:
-	rm -f build/*.o
-
-clean_generate_gdtproto:
-	rm -f build/generate_gdtproto
+	rm -f $(exec_build)
 
 clean_generated:
 	rm -f generated/*
@@ -92,5 +100,8 @@ clean_boot_elf:
 
 clean_boot:
 	rm -f boot
+
+clean_test:
+	rm -f $(exec_test)
 
 # vim: set ts=4 sw=4 noet syn=make:
