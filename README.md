@@ -17,6 +17,9 @@ This will create `boot.elf` and `boot`.
 * You will need a relatively recent >=4.x-ish GCC and >=2.x-ish binutils which can emit x86 code.
   Ensure that it's the first `gcc`, `ld`, and `as` in your path.
 ### Options:
+* You can generate additional debugging objects by running `make debug`.
+* You can run sanity checks by running `make test`.
+* You can complete all targets including `all`, `debug`, and `test` by running `make extra`.
 * You can specify the compiler to use for the target by specifying `CC=your-cc` and the compiler for the host by specifying `HOSTCC=your-host-cc` on the command line, don't forget to set `PATH` to include the subprograms you will need for your compilers.
 * In order to use two different compilers you may need to specify the compiler subprogram path.  Set the `COMPILER_PATH` environment variable for the target and `HOST_COMPILER_PATH` for the host.
 
