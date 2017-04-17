@@ -8,6 +8,13 @@ CFLAGS := $(CFLAGS) -nostdlib
 HOST_CFLAGS ?= -O2
 HOST_CFLAGS := $(HOST_CFLAGS)
 
+ifdef COMPILER_PATH
+override CC := COMPILER_PATH=$(COMPILER_PATH) $(CC)
+endif
+ifdef HOST_COMPILER_PATH
+override HOSTCC := COMPILER_PATH=$(HOST_COMPILER_PATH) $(HOSTCC)
+endif
+
 objects16 := dos.o errno_data.o fail.o gdt.o heap.o loadk.o memmap.o \
              reset.o stage1.o stage2.o start.o stdio.o string.o
 objects16 := $(addprefix src/,$(objects16))
