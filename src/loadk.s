@@ -6,6 +6,11 @@
 
 .file		"loadk.s"
 
+// The GDT which will be 3 entries long so 24 bytes.
+// The GDT registry is only 6 bytes long,
+// but lets just make sure it's aligned to 4.
+	.set	gdt,		heapstart+0x08
+
 // The memory map will start after the GDT.
 	.set	memmap,		heapstart+0x20
 
@@ -77,7 +82,9 @@ kexec:
 //	push	%bx
 
 // Load the GDT registry.
+	pushw	$gdt
 	call	init_gdt
+	add	$0x02,		%sp
 
 // Create the memory map.  The number of entries is in %ax.
 	pushw	$memmap

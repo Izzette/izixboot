@@ -23,7 +23,7 @@
 // Place it into entry_dest, and fake ACPI 3.x format even if it's not supported.
 // See include/izixboot/memmap.h for a definition of e820_3x_entry_t.
 // Returns the number of entries.
-// short get_memmap (e820_3x_entry_t *entry_dest) {
+// short get_memmap (const e820_3x_entry_t *entry_dest) {
 get_memmap:
 	push	%bp
 	mov	%sp,		%bp
