@@ -25,6 +25,10 @@
 #include <stdbool.h>
 #include <izixboot/gdt.h>
 
+// Real entry type.
+typedef uint8_t  gdt32_flags_t;  // Actually restricted to 4 bits.
+typedef uint64_t gdt32_entry_t;
+
 // Logical structures.
 
 typedef struct gdt32_logical_flags {
@@ -39,9 +43,10 @@ typedef struct gdt32_logical_entry {
 	gdt32_logical_flags_t flags;
 } gdt32_logical_entry_t;
 
-// Real entry type.
-typedef uint8_t  gdt32_flags_t;  // Actually restricted to 4 bits.
-typedef uint64_t gdt32_entry_t;
+typedef struct gdt32_logical_register {
+	gdtr_size_t    size   : GDTR_SIZE_LENGTH;
+	gdt32_entry_t *offset;
+} gdt32_logical_register_t;
 
 // Inline functions to generate real valid entries.
 
@@ -73,6 +78,15 @@ static inline gdt32_entry_t gdt32_encode (const gdt32_logical_entry_t logical_en
 	return entry;
 }
 
+static inline void gdt32_register_encode (
+		const gdt32_logical_register_t logical_registry,
+		gdt_register_t *registry) {
+	registry->size   = logical_registry.size - 1;
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+	registry->offset = (uint32_t)logical_registry.offset;
+#pragma GCC diagnostic pop
+}
+
 static inline void gdt32_flags_decode (
 		const gdt32_flags_t flags,
 		gdt32_logical_flags_t *logical_flags
@@ -101,6 +115,16 @@ static inline void gdt32_decode (
 		((entry & GDT_BASE_HIGH_DEMASK)  >> (GDT_BASE_HIGH_OFFSET - GDT_BASE_LOW_LENGTH)));
 	logical_entry->access = logical_access;
 	logical_entry->flags  = logical_flags;
+}
+
+static inline void gdt32_register_decode (
+		const gdt_register_t registry,
+		gdt32_logical_register_t *logical_registry
+) {
+	logical_registry->size   = registry.size + 1;
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+	logical_registry->offset = (gdt32_entry_t *)registry.offset;
+#pragma GCC diagnostic pop
 }
 
 static inline bool gdt32_flags_validate (const gdt32_flags_t flags) {

@@ -32,7 +32,7 @@ bootobjects := $(objects16) $(objects32)
 exec_build := generate_gdtproto
 exec_build := $(addprefix build/,$(exec_build))
 
-exec_test := gdt_recode
+exec_test := gdt_recode gdt_validate gdtr_sizeof
 run_test := $(addprefix test_,$(exec_test))
 exec_test := $(addprefix test/,$(exec_test))
 

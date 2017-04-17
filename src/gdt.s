@@ -6,9 +6,6 @@
 
 .file		"gdt.s"
 
-// The GDT registry.
-	.set	gdtr,		heapstart
-
 .code16
 
 .section	.stage2
@@ -17,14 +14,18 @@
 	.type	init_gdt,	@function
 // Initialize the GDT
 // See include/izixboot/gdt32.h for a definition of gdt32_entry_t.
-// void init_gdt (const gdt32_entry_t *gdt_entries) {
+// void init_gdt (const gdt_register_t *registry, const gdt32_entry_t *gdt_entries) {
 init_gdt:
 // There is no need to mess with the stack, this function accepts no arguments.
 	push	%bp
 	mov	%sp,		%bp
 
+// Store registers.
+	push	%bx
+
 // Move the gdt_entries pointer to %ax
-	mov	0x4(%bp),	%ax
+	mov	0x4(%bp),	%bx
+	mov	0x6(%bp),	%ax
 
 // Copy the GDT prototype.
 	push	$gdtlen
@@ -36,12 +37,15 @@ init_gdt:
 
 
 // Create the descriptor registry.
-	movw	$gdtlen-1,	gdtr
-	movw	%ax,		gdtr+0x02
-	movw	$0x0000,	gdtr+0x04
+	movw	$gdtlen-1,	0x00(%bx)
+	movw	%ax,		0x02(%bx)
+	movw	$0x0000,	0x04(%bx)
 
 // Load the GDT, doesn't take effect until next ljmp, lcall, or lret
-	lgdt	gdtr
+	lgdt	(%bx)
+
+// Restore registers.
+	pop	%bx
 
 	mov	%bp,		%sp
 	pop	%bp

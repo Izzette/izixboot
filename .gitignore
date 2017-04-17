@@ -4,4 +4,6 @@ boot.elf
 _hd*
 build/generate_gdtproto
 test/gdt_recode
+test/gdt_validate
+test/gdtr_sizeof
 generated

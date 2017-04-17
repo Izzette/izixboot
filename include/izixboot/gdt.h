@@ -22,6 +22,7 @@
 #define _IZIXBOOT_GDT_H 1
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdbool.h>
 
 // Offsets for values in bits.
@@ -52,30 +53,6 @@
 	(GDT_LIMIT_LOW_LENGTH + GDT_LIMIT_HIGH_LENGTH)
 #define GDT_BASE_LENGTH \
 	(GDT_BASE_LOW_LENGTH  + GDT_BASE_HIGH_LENGTH)
-
-// Bitmasks for converting from logical values.
-#define GDT_LIMIT_LOW_BITMASK \
-	(((0x00000001 << GDT_LIMIT_LOW_LENGTH)  - 1))
-#define GDT_LIMIT_HIGH_BITMASK \
-	(((0x00000001 << GDT_LIMIT_HIGH_LENGTH) - 1) << GDT_LIMIT_LOW_LENGTH)
-#define GDT_BASE_LOW_BITMASK \
-	(((0x00000001 << GDT_BASE_LOW_LENGTH)   - 1))
-#define GDT_BASE_HIGH_BITMASK \
-	(((0x00000001 << GDT_BASE_HIGH_LENGTH)  - 1) << GDT_BASE_LOW_LENGTH)
-
-// Bitmasks for converting to logical values.
-#define GDT_LIMIT_LOW_DEMASK \
-	(((0x00000001L << GDT_LIMIT_LOW_LENGTH)  - 1) << GDT_LIMIT_LOW_OFFSET)
-#define GDT_LIMIT_HIGH_DEMASK \
-	(((0x00000001L << GDT_LIMIT_HIGH_LENGTH) - 1) << GDT_LIMIT_HIGH_OFFSET)
-#define GDT_BASE_LOW_DEMASK \
-	(((0x00000001L << GDT_BASE_LOW_LENGTH)   - 1) << GDT_BASE_LOW_OFFSET)
-#define GDT_BASE_HIGH_DEMASK \
-	(((0x00000001L << GDT_BASE_HIGH_LENGTH)  - 1) << GDT_BASE_HIGH_OFFSET)
-#define GDT_ACCESS_DEMASK \
-	(((0x00000001L << GDT_ACCESS_LENGTH)     - 1) << GDT_ACCESS_OFFSET)
-#define GDT_FLAGS_DEMASK \
-	(((0x00000001L << GDT_FLAGS_LENGTH)      - 1) << GDT_FLAGS_OFFSET)
 
 /* Access Byte Legend:
  * AC = Accessed bit.
@@ -138,6 +115,45 @@
 #define GDT_FLAGS_GR_LENGTH \
 	(GDT_FLAGS_LENGTH      - GDT_FLAGS_GR_OFFSET)
 
+// Offsets for register in bits.
+#define GDTR_SIZE_OFFSET   000
+#define GDTR_OFFSET_OFFSET 020
+
+// Lengths for register in bits.
+#define GDTR_LENGTH 060
+#define GDTR_SIZE_LENGTH \
+	(GDTR_OFFSET_OFFSET - GDTR_SIZE_OFFSET)
+#define GDTR_OFFSET_LENGTH \
+	(GDTR_LENGTH        - GDTR_OFFSET_OFFSET)
+
+// Bitmasks for converting from logical values.
+#define GDT_LIMIT_LOW_BITMASK \
+	(((0x00000001 << GDT_LIMIT_LOW_LENGTH)  - 1))
+#define GDT_LIMIT_HIGH_BITMASK \
+	(((0x00000001 << GDT_LIMIT_HIGH_LENGTH) - 1) << GDT_LIMIT_LOW_LENGTH)
+#define GDT_BASE_LOW_BITMASK \
+	(((0x00000001 << GDT_BASE_LOW_LENGTH)   - 1))
+#define GDT_BASE_HIGH_BITMASK \
+	(((0x00000001 << GDT_BASE_HIGH_LENGTH)  - 1) << GDT_BASE_LOW_LENGTH)
+
+// Bitmasks for converting to logical values.
+#define GDT_LIMIT_LOW_DEMASK \
+	(((0x00000001L << GDT_LIMIT_LOW_LENGTH)  - 1) << GDT_LIMIT_LOW_OFFSET)
+#define GDT_LIMIT_HIGH_DEMASK \
+	(((0x00000001L << GDT_LIMIT_HIGH_LENGTH) - 1) << GDT_LIMIT_HIGH_OFFSET)
+#define GDT_BASE_LOW_DEMASK \
+	(((0x00000001L << GDT_BASE_LOW_LENGTH)   - 1) << GDT_BASE_LOW_OFFSET)
+#define GDT_BASE_HIGH_DEMASK \
+	(((0x00000001L << GDT_BASE_HIGH_LENGTH)  - 1) << GDT_BASE_HIGH_OFFSET)
+#define GDT_ACCESS_DEMASK \
+	(((0x00000001L << GDT_ACCESS_LENGTH)     - 1) << GDT_ACCESS_OFFSET)
+#define GDT_FLAGS_DEMASK \
+	(((0x00000001L << GDT_FLAGS_LENGTH)      - 1) << GDT_FLAGS_OFFSET)
+#define GDTR_SIZE_DEMASK \
+	(((0x000001L   << GDTR_SIZE_LENGTH)      - 1) << GDTR_SIZE_OFFSET)
+#define GDTR_OFFSET_DEMASK \
+	(((0x000001L   << GDTR_OFFSET_LENGTH)    - 1) << GDTR_OFFSET_OFFSET)
+
 // Some typedefs.
 
 typedef bool     gdt_bool;
@@ -148,6 +164,7 @@ typedef bool     gdt_width_t;
 typedef bool     gdt_block_t;
 typedef uint32_t gdt_limit_t;
 typedef uint32_t gdt_base_t;
+typedef size_t   gdtr_size_t;
 
 // Some definitions for readability.
 
@@ -182,6 +199,13 @@ typedef uint32_t gdt_base_t;
 #define GDT_SIZE16 false
 #define GDT_SIZE32 true
 
+// Real entry type.
+typedef uint8_t gdt_access_t;
+typedef struct gdt_register {
+	uint16_t size;
+	uint32_t offset;
+} __attribute__((packed)) gdt_register_t;
+
 // Logical structures.
 
 typedef struct gdt_logical_access {
@@ -192,9 +216,6 @@ typedef struct gdt_logical_access {
 	gdt_ring_t priviledge : GDT_ACCESS_PV_LENGTH;
 	gdt_bool   present;
 } gdt_logical_access_t ;
-
-// Real entry type.
-typedef uint8_t gdt_access_t;
 
 // Inline functions to generate real valid entries.
 
