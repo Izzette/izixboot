@@ -1,1 +1,1 @@
-src/gdt.o: src/heap.s
+src/gdt.o: src/heap.s generated/gdtproto.s

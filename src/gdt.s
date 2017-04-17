@@ -2,6 +2,7 @@
 // Working with the GDT and GDT Registry.
 
 .include	"heap.s"
+.include	"gdtproto.s"
 
 .file		"gdt.s"
 
@@ -43,23 +44,5 @@ init_gdt:
 	ret
 // }
 	.size	init_gdt,	.-init_gdt
-
-.section	.rodata
-
-	.type	gdtproto,	@object
-// GDT prototype
-gdtproto:
-// NULL descriptor
-	.long   0x00000000
-	.long   0x00000000
-// Code descriptor
-	.long	0x0000FFFF
-	.long	0x00CF9A00
-// Data descriptor
-	.long	0x0000FFFF
-	.long	0x00CF9200
-// END gdtproto
-	.set	gdtlen,		.-gdtproto
-	.size	gdtproto,	gdtlen
 
 // vim: set ts=8 sw=8 noet syn=asm:

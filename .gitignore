@@ -2,3 +2,5 @@ boot
 boot.elf
 *.o
 _hd*
+build/generate_gdtproto
+generated
