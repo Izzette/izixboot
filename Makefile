@@ -3,9 +3,11 @@
 CC := gcc
 HOSTCC := gcc
 OBJCOPY := objcopy
-CFLAGS ?= -ggdb
+CFLAGS ?= -ggdb -Wall -Wextra
 CFLAGS := $(CFLAGS) -nostdlib
-HOST_CFLAGS ?= -O2
+DEBUG_CFLAGS ?= -ggdb -Wall -Wextra
+DEBUG_CFLAGS := $(DEBUG_CFLAGS)
+HOST_CFLAGS ?= -O2 -Wall -Wextra
 HOST_CFLAGS := $(HOST_CFLAGS)
 
 ifdef COMPILER_PATH
@@ -31,7 +33,7 @@ all: boot
 debug: $(objects_debug)
 
 $(objects_debug):%.o:%.c
-	$(CC) $(CFLAGS) -I./include -m32 -c $< -o $@
+	$(HOSTCC) $(DEBUG_CFLAGS) -I./include -m32 -c $< -o $@
 
 $(objects16):%.o:%.s
 	$(CC) $(CFLAGS) -Wa,-I./src -Wa,-I./generated -m16 -c $< -o $@

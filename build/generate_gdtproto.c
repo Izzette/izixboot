@@ -40,6 +40,13 @@ static const gdt32_logical_entry_t data_entry = {
 	}
 };
 
+inline uint32_t get_lower32 (uint64_t full64) {
+	return full64 & 0xffffffff;
+}
+inline uint32_t get_upper32 (uint64_t full64) {
+	return full64 >> 32;
+}
+
 int main () {
 	entries[0] = gdt32_encode_blank ();
 	entries[1] = gdt32_encode (code_entry);
@@ -51,7 +58,7 @@ int main () {
 		".file\t\t\"gdtproto.s\"\n"
 		"");
 	printf (
-		"\t.set\tgdtlen,\t\t0x%04x\n", sizeof(entries));
+		"\t.set\tgdtlen,\t\t0x%04lx\n", sizeof(entries));
 	puts (
 		"\n"
 		".section\t.rodata\n"
@@ -62,27 +69,27 @@ int main () {
 		"\t.type\tgdtproto_null,\t@object\n"
 		"gdtproto_null:");
 	printf (
-		"\t.long\t0x%08x\n", ((uint32_t *)(entries + 0))[0]);
+		"\t.long\t0x%08x\n", get_lower32(entries[0]));
 	printf (
-		"\t.long\t0x%08x\n", ((uint32_t *)(entries + 0))[1]);
+		"\t.long\t0x%08x\n", get_upper32(entries[0]));
 	puts (
 		"\t.size\tgdtproto_null,\t.-gdtproto_null\n"
 		"\n"
 		"\t.type\tgdtproto_code,\t@object\n"
 		"gdtproto_code:");
 	printf (
-		"\t.long\t0x%08x\n", ((uint32_t *)(entries + 1))[0]);
+		"\t.long\t0x%08x\n", get_lower32(entries[1]));
 	printf (
-		"\t.long\t0x%08x\n", ((uint32_t *)(entries + 1))[1]);
+		"\t.long\t0x%08x\n", get_upper32(entries[1]));
 	puts (
 		"\t.size\tgdtproto_code,\t.-gdtproto_code\n"
 		"\n"
 		"\t.type\tgdtproto_data,\t@object\n"
 		"gdtproto_data:");
 	printf (
-		"\t.long\t0x%08x\n", ((uint32_t *)(entries + 2))[0]);
+		"\t.long\t0x%08x\n", get_lower32(entries[2]));
 	printf (
-		"\t.long\t0x%08x\n", ((uint32_t *)(entries + 2))[1]);
+		"\t.long\t0x%08x\n", get_upper32(entries[2]));
 	puts (
 		"\t.size\tgdtproto_data,\t.-gdtproto_data\n"
 		"\n"
