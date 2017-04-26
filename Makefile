@@ -36,12 +36,13 @@ exec_test := gdt_recode gdt_validate gdtr_recode gdtr_sizeof
 run_test := $(addprefix test_,$(exec_test))
 exec_test := $(addprefix test/,$(exec_test))
 
+all: boot
+
 include $(wildcard src/*.d)
 include $(wildcard debug/*.d)
 include $(wildcard build/*.d)
 include $(wildcard test/*.d)
 
-all: boot
 extra: prepare all debug test
 prepare: generated/gdtproto.s
 debug: $(objects_debug)
