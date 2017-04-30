@@ -81,7 +81,7 @@ static inline gdt32_entry_t gdt32_encode (const gdt32_logical_entry_t logical_en
 static inline gdt_register_t gdt32_register_encode (const gdt32_logical_register_t logical_registry) {
 	gdt_register_t registry;
 
-	registry.size   = logical_registry.size - 1;
+	registry.size   = sizeof(gdt32_entry_t) * (logical_registry.size - 1);
 #pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
 	registry.offset = (uint32_t)logical_registry.offset;
 #pragma GCC diagnostic pop
@@ -123,7 +123,7 @@ static inline void gdt32_register_decode (
 		const gdt_register_t registry,
 		gdt32_logical_register_t *logical_registry
 ) {
-	logical_registry->size   = registry.size + 1;
+	logical_registry->size   = registry.size / sizeof(gdt32_entry_t) + 1;
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 	logical_registry->offset = (gdt32_entry_t *)registry.offset;
 #pragma GCC diagnostic pop
